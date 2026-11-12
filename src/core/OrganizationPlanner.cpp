@@ -107,10 +107,7 @@ std::vector<MoveOperation> OrganizationPlanner::generatePlan(
 
         // Guardrail 1: Enforce Root-Level Only scope.
         // Assert that file candidate is a direct child of the workspace root.
-        std::error_code canEc;
-        fs::path normFileParent = fs::weakly_canonical(file.path.parent_path(), canEc);
-        fs::path normRoot = fs::weakly_canonical(rootDir, canEc);
-        if (normFileParent != normRoot) {
+        if (pathKey(file.path.parent_path()) != pathKey(rootDir)) {
             // Nested file candidate rejected; do not organize files inside existing folders
             continue;
         }

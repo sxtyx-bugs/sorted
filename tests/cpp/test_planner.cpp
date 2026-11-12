@@ -57,6 +57,13 @@ void TestPlanner::testCollisionResolution_TC09() {
     file.write("existing");
     file.close();
 
+    // Create source file in workspace root
+    fs::path sourceFile = root / "report.pdf";
+    QFile srcFile(QString::fromStdWString(sourceFile.wstring()));
+    srcFile.open(QIODevice::WriteOnly);
+    srcFile.write("source content");
+    srcFile.close();
+
     // Now plan moves for two separate files named report.pdf
     std::vector<FileRecord> files;
 
@@ -64,7 +71,7 @@ void TestPlanner::testCollisionResolution_TC09() {
     f1.name = "report.pdf";
     f1.extension = "pdf";
     f1.category = "Documents";
-    f1.path = root / "incoming1" / "report.pdf";
+    f1.path = root / "report.pdf";
     f1.eligible = true;
     files.push_back(f1);
 
@@ -72,7 +79,7 @@ void TestPlanner::testCollisionResolution_TC09() {
     f2.name = "report.pdf";
     f2.extension = "pdf";
     f2.category = "Documents";
-    f2.path = root / "incoming2" / "report.pdf";
+    f2.path = root / "report.pdf";
     f2.eligible = true;
     files.push_back(f2);
 
