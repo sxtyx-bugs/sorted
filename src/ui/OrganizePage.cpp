@@ -173,7 +173,7 @@ void OrganizePage::renderTable() {
         m_tableWidget->insertRow(r);
 
         auto checkItem = new QTableWidgetItem();
-        checkItem->setCheckState(op.isApproved ? Qt::Checked : Qt::Unchecked);
+        checkItem->setCheckState(op.included ? Qt::Checked : Qt::Unchecked);
         checkItem->setData(Qt::UserRole, static_cast<qlonglong>(planIdx));
         m_tableWidget->setItem(r, 0, checkItem);
 
@@ -206,7 +206,7 @@ void OrganizePage::renderTable() {
 void OrganizePage::onSelectAllClicked() {
     m_tableWidget->blockSignals(true);
     for (std::size_t planIdx : m_filteredIndices) {
-        m_plan[planIdx].isApproved = true;
+        m_plan[planIdx].included = true;
     }
     for (int r = 0; r < m_tableWidget->rowCount(); ++r) {
         if (auto it = m_tableWidget->item(r, 0)) {
@@ -220,7 +220,7 @@ void OrganizePage::onSelectAllClicked() {
 void OrganizePage::onDeselectAllClicked() {
     m_tableWidget->blockSignals(true);
     for (std::size_t planIdx : m_filteredIndices) {
-        m_plan[planIdx].isApproved = false;
+        m_plan[planIdx].included = false;
     }
     for (int r = 0; r < m_tableWidget->rowCount(); ++r) {
         if (auto it = m_tableWidget->item(r, 0)) {
@@ -235,7 +235,7 @@ void OrganizePage::onItemChanged(QTableWidgetItem* item) {
     if (item && item->column() == 0) {
         std::size_t planIdx = static_cast<std::size_t>(item->data(Qt::UserRole).toLongLong());
         if (planIdx < m_plan.size()) {
-            m_plan[planIdx].isApproved = (item->checkState() == Qt::Checked);
+            m_plan[planIdx].included = (item->checkState() == Qt::Checked);
         }
         updateSummary();
     }
@@ -244,7 +244,7 @@ void OrganizePage::onItemChanged(QTableWidgetItem* item) {
 void OrganizePage::updateSummary() {
     std::size_t approved = 0;
     for (const auto& op : m_plan) {
-        if (op.isApproved) approved++;
+        if (op.included) approved++;
     }
     m_lblApprovedCount->setText(QString("%1 of %2 moves approved").arg(approved).arg(m_plan.size()));
 }
@@ -252,7 +252,7 @@ void OrganizePage::updateSummary() {
 void OrganizePage::onApplyClicked() {
     std::vector<MoveOperation> approvedMoves;
     for (const auto& op : m_plan) {
-        if (op.isApproved) {
+        if (op.included) {
             approvedMoves.push_back(op);
         }
     }

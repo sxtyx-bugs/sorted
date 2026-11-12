@@ -34,7 +34,7 @@ bool DuplicateDetector::computeFileSha256(
             return false;
         }
         if (bytes > 0) {
-            hash.addData(buffer.data(), bytes);
+            hash.addData(QByteArrayView(buffer.data(), static_cast<qsizetype>(bytes)));
             outBytesRead += static_cast<std::uintmax_t>(bytes);
         }
     }

@@ -595,10 +595,9 @@ void MainWindow::onExecutionFinished(const Operations::ExecutionSummary& summary
     m_btnScan->setEnabled(true);
     m_btnCancel->setVisible(false);
     m_progressBar->setVisible(false);
-    m_lblStatus->setText(QString("Organization complete: %1 succeeded, %2 failed in %3 ms")
-        .arg(summary.successCount)
-        .arg(summary.failedCount)
-        .arg(summary.durationMs.count()));
+    m_lblStatus->setText(QString("Organization complete: %1 succeeded, %2 failed")
+        .arg(summary.succeeded)
+        .arg(summary.failed));
 
     m_pageHistory->refreshHistory();
     m_navList->setCurrentRow(5);
@@ -607,12 +606,10 @@ void MainWindow::onExecutionFinished(const Operations::ExecutionSummary& summary
         this, "Execution Complete",
         QString("File organization batch completed:\n\n"
                 "• Succeeded: %1 files\n"
-                "• Failed / Skipped: %2 files\n"
-                "• Time elapsed: %3 ms\n\n"
+                "• Failed / Skipped: %2 files\n\n"
                 "All operations have been safely journaled.")
-            .arg(summary.successCount)
-            .arg(summary.failedCount)
-            .arg(summary.durationMs.count())
+            .arg(summary.succeeded)
+            .arg(summary.failed)
     );
 }
 

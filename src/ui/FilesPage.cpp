@@ -5,6 +5,7 @@
 #include <QUrl>
 #include <QGuiApplication>
 #include <QClipboard>
+#include <unordered_set>
 #include <chrono>
 
 namespace Ui {
@@ -162,11 +163,11 @@ void FilesPage::applySortAndFilter() {
     auto startSort = std::chrono::high_resolution_clock::now();
     int sortIdx = m_sortCombo->currentIndex();
     if (sortIdx == 0) {
-        Core::MergeSort::sortByName(m_displayedFiles, true);
+        Core::sortFileRecords(m_displayedFiles, Core::SortKey::NameAsc);
     } else if (sortIdx == 1) {
-        Core::MergeSort::sortBySize(m_displayedFiles, true);
+        Core::sortFileRecords(m_displayedFiles, Core::SortKey::SizeAsc);
     } else if (sortIdx == 2) {
-        Core::MergeSort::sortBySize(m_displayedFiles, false);
+        Core::sortFileRecords(m_displayedFiles, Core::SortKey::SizeDesc);
     }
     auto endSort = std::chrono::high_resolution_clock::now();
     auto sortDurationMs = std::chrono::duration<double, std::milli>(endSort - startSort).count();

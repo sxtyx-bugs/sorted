@@ -12,11 +12,11 @@ int main(int argc, char* argv[]) {
 
     QApplication app(argc, argv);
 
-    QCoreApplication::setApplicationName("SORTED");
-    QCoreApplication::setApplicationDisplayName("SORTED");
-    QCoreApplication::setApplicationVersion("1.0.0");
-    QCoreApplication::setOrganizationName("SORTED Project");
-    QCoreApplication::setOrganizationDomain("satydev.com");
+    QApplication::setApplicationName("SORTED");
+    QApplication::setApplicationDisplayName("SORTED");
+    QApplication::setApplicationVersion("1.0.0");
+    QApplication::setOrganizationName("Satydev");
+    QApplication::setOrganizationDomain("satydev.com");
 
     // Set window icon from bundled Qt resource
     app.setWindowIcon(QIcon(":/icons/SORTED.png"));

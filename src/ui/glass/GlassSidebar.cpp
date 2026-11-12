@@ -70,8 +70,8 @@ void GlassSidebar::refreshBackdrop() {
     // Multi-pass blur simulation
     QImage img = rawPix.toImage();
     QImage s1 = img.scaled(qMax(1, w / 8), qMax(1, h / 8), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-    QImage s2 = s1.scaled(qMax(1, w / 14), qMax(1, h / 14), Qt::IgnoreAspectRatio, Qt.SmoothTransformation);
-    QImage blurred = s2.scaled(w, h, Qt::IgnoreAspectRatio, Qt.SmoothTransformation);
+    QImage s2 = s1.scaled(qMax(1, w / 14), qMax(1, h / 14), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    QImage blurred = s2.scaled(w, h, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 
     // Subtle optical displacement refraction
     QImage displaced(w, h, QImage::Format_ARGB32_Premultiplied);
