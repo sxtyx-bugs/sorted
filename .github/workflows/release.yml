@@ -12,7 +12,7 @@ on:
         description: 'Publish GitHub Release'
         required: true
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: write
@@ -201,31 +201,38 @@ jobs:
   # ============================================================================
   publish-release:
     name: Publish Release Artifacts
-    needs: [build-macos-arm64, build-macos-x86_64, build-windows]
-    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.publish_release == true
+    needs: [build-macos-arm64, build-windows]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish_release }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
 
+    steps:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
 
-      - name: Flatten Artifacts Structure
+      - name: Verify and collect release files
         run: |
           mkdir -p dist-release
-          find release-artifacts -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.zip" \) -exec cp {} dist-release/ \;
-          ls -la dist-release/
+          find release-artifacts -type f \
+            \( -name "*.dmg" -o -name "*.exe" -o -name "*.zip" \) \
+            -exec cp {} dist-release/ \;
+
+          echo "Release files collected:"
+          ls -lah dist-release/
+
+          test -n "$(find dist-release -type f -name '*.dmg' -print -quit)"
+          test -n "$(find dist-release -type f -name '*.exe' -print -quit)"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: SORTED ${{ github.ref_name || 'v1.0.0' }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.0.0' }}
+          name: SORTED ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.0.0' }}
           draft: false
           prerelease: false
           generate_release_notes: true
           files: dist-release/*
+          token: ${{ secrets.GITHUB_TOKEN }}
