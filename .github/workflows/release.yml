@@ -81,7 +81,7 @@ jobs:
   # ============================================================================
   build-macos-x86_64:
     name: Build macOS (Intel x86_64)
-    runs-on: macos-13
+    runs-on: macos-15-intel
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
