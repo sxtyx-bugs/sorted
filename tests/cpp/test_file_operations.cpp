@@ -1,9 +1,9 @@
 #include <QTest>
 #include <QTemporaryDir>
 #include <QFile>
-#include "../src/operations/FileOperationService.h"
-#include "../src/operations/OperationJournal.h"
-#include "../src/models/MoveOperation.h"
+#include "FileOperationService.h"
+#include "OperationJournal.h"
+#include "MoveOperation.h"
 
 class TestFileOperations : public QObject {
     Q_OBJECT

@@ -2,8 +2,8 @@
 #include <vector>
 #include <random>
 #include <algorithm>
-#include "../src/core/MergeSort.h"
-#include "../src/models/FileRecord.h"
+#include "MergeSort.h"
+#include "FileRecord.h"
 
 class TestMergeSort : public QObject {
     Q_OBJECT

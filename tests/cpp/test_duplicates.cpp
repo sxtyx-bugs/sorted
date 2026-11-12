@@ -2,8 +2,8 @@
 #include <QTemporaryDir>
 #include <QFile>
 #include <vector>
-#include "../src/core/DuplicateDetector.h"
-#include "../src/models/FileRecord.h"
+#include "DuplicateDetector.h"
+#include "FileRecord.h"
 
 class TestDuplicates : public QObject {
     Q_OBJECT

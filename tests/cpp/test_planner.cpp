@@ -1,10 +1,10 @@
 #include <QTest>
 #include <QTemporaryDir>
 #include <QFile>
-#include "../src/core/OrganizationPlanner.h"
-#include "../src/core/FileClassifier.h"
-#include "../src/core/FileScanner.h"
-#include "../src/models/FileRecord.h"
+#include "OrganizationPlanner.h"
+#include "FileClassifier.h"
+#include "FileScanner.h"
+#include "FileRecord.h"
 
 class TestPlanner : public QObject {
     Q_OBJECT

@@ -1,6 +1,6 @@
 #include <QTest>
-#include "../src/core/FileClassifier.h"
-#include "../src/models/FileRecord.h"
+#include "FileClassifier.h"
+#include "FileRecord.h"
 
 class TestClassifier : public QObject {
     Q_OBJECT
