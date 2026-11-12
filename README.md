@@ -224,7 +224,7 @@ The remote CI/CD workflow (`.github/workflows/release.yml`) builds, tests, and p
 * **Matrix of Jobs:**
   1. **`build-macos-arm64` (`macos-15` runner):** Compiles native Apple Silicon `arm64` binary, runs verification tests, executes `macdeployqt`, packages `SORTED-1.0.0-macOS-arm64.dmg`, and uploads artifact.
   2. **`build-macos-x86_64` (`macos-13` runner):** Compiles native Intel `x86_64` binary, runs tests, executes `macdeployqt`, packages `SORTED-1.0.0-macOS-x86_64.dmg`, and uploads artifact.
-  3. **`build-windows` (`windows-latest` runner):** Compiles 64-bit MSVC binary, runs tests, runs `windeployqt`, compiles Inno Setup installer `SORTED-1.0.0-windows-x64-Setup.exe` and portable ZIP.
+  3. **`build-windows` (`windows-2022` runner):** Compiles 64-bit MSVC binary, runs tests, runs `windeployqt`, compiles Inno Setup installer `SORTED-1.0.0-windows-x64-Setup.exe` and portable ZIP.
   4. **`publish-release`:** Collects all artifacts and publishes a unified GitHub Release.
 
 ### Code Signing & Apple Notarization
