@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "appName": "SORTED",
+  "theme": "light",
+  "sidebarCollapsed": false,
+  "scope": {
+    "rootOnly": true,
+    "preserveSubfolders": true,
+    "skipSortedOutput": true
+  },
+  "safety": {
+    "reviewRequired": true,
+    "atomicMove": true,
+    "writeJournal": true,
+    "collisionRename": true
+  },
+  "taxonomy": {
+    "Documents": ["pdf", "doc", "docx", "odt", "rtf", "txt"],
+    "Spreadsheets": ["csv", "xls", "xlsx", "ods"],
+    "Presentations": ["ppt", "pptx", "odp"],
+    "Images": ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"],
+    "Videos": ["mp4", "mkv", "mov", "avi", "webm"],
+    "Audio": ["mp3", "wav", "flac", "m4a", "ogg"],
+    "Archives": ["zip", "rar", "7z", "tar", "gz"],
+    "Installers": ["exe", "msi", "msix"],
+    "Code": ["c", "cpp", "h", "hpp", "py", "js", "html", "json"]
+  }
+}

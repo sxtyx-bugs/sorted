@@ -1,19 +1,30 @@
 #include <QApplication>
 #include <QStyleFactory>
+#include <QIcon>
 #include "ui/Theme.h"
 #include "ui/MainWindow.h"
 
 int main(int argc, char* argv[]) {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+#endif
+
     QApplication app(argc, argv);
 
     QCoreApplication::setApplicationName("SORTED");
+    QCoreApplication::setApplicationDisplayName("SORTED");
     QCoreApplication::setApplicationVersion("1.0.0");
     QCoreApplication::setOrganizationName("SORTED Project");
+    QCoreApplication::setOrganizationDomain("satydev.com");
+
+    // Set window icon from bundled Qt resource
+    app.setWindowIcon(QIcon(":/icons/SORTED.png"));
 
     // Set modern clean UI style
     app.setStyle(QStyleFactory::create("Fusion"));
 
-    // Apply centralized Apple x Notion Cobalt Blue theme
+    // Apply centralized theme
     Ui::Theme::applyTheme(Ui::ColorTheme::Light);
 
     Ui::MainWindow mainWindow;

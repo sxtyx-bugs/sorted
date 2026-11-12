@@ -1,0 +1,87 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 21,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "windows-release",
+            "displayName": "Windows x64 Release",
+            "description": "Target Windows 64-bit Release build",
+            "binaryDir": "${sourceDir}/build/windows-release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "windows-debug",
+            "displayName": "Windows x64 Debug",
+            "description": "Target Windows 64-bit Debug build",
+            "binaryDir": "${sourceDir}/build/windows-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "macos-arm64",
+            "displayName": "macOS Apple Silicon (arm64)",
+            "description": "Native release build for Apple Silicon M1/M2/M3",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/macos-arm64",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_OSX_ARCHITECTURES": "arm64",
+                "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0"
+            }
+        },
+        {
+            "name": "macos-x86_64",
+            "displayName": "macOS Intel (x86_64)",
+            "description": "Native release build for Intel x86_64 Macs",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/macos-x86_64",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_OSX_ARCHITECTURES": "x86_64",
+                "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "windows-release",
+            "configurePreset": "windows-release"
+        },
+        {
+            "name": "windows-debug",
+            "configurePreset": "windows-debug"
+        },
+        {
+            "name": "macos-arm64",
+            "configurePreset": "macos-arm64"
+        },
+        {
+            "name": "macos-x86_64",
+            "configurePreset": "macos-x86_64"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "windows-release",
+            "configurePreset": "windows-release",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "macos-arm64",
+            "configurePreset": "macos-arm64",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "macos-x86_64",
+            "configurePreset": "macos-x86_64",
+            "output": { "outputOnFailure": true }
+        }
+    ]
+}

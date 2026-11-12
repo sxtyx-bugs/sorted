@@ -33,6 +33,7 @@ struct ScanResult {
     fs::path rootPath;
     std::vector<FileRecord> files;
     std::vector<DuplicateGroup> duplicateGroups;
+    std::vector<fs::path> protectedFolders;
     std::vector<std::string> scanErrors;
     ScanStatistics stats;
 };

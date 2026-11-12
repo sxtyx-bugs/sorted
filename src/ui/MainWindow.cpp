@@ -5,6 +5,7 @@
 #include <QVBoxLayout>
 #include <QSplitter>
 #include <QStandardPaths>
+#include <QSettings>
 #include <chrono>
 
 namespace Ui {
@@ -121,18 +122,8 @@ MainWindow::MainWindow(QWidget* parent)
     setupUi();
     applyTheme();
 
-    // Default to Downloads folder
-    QString downloadsPath = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
-    if (!downloadsPath.isEmpty() && fs::exists(fs::path(downloadsPath.toStdWString()))) {
-        m_selectedRoot = fs::path(downloadsPath.toStdWString());
-    } else {
-        m_selectedRoot = fs::current_path();
-    }
-    updateRootPathDisplay();
-
-    // Set journal file location
-    m_journal.setJournalFilePath(m_selectedRoot / ".sorted_journal.json");
-    m_pageHistory->refreshHistory();
+    // Check previously selected workspace via QSettings
+    loadSettings();
 }
 
 MainWindow::~MainWindow() {
@@ -149,7 +140,7 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::setupUi() {
-    setWindowTitle("SORTED — Safe File Organizer");
+    setWindowTitle("SORTED — Safe Desktop File Organizer");
     resize(1180, 760);
     setMinimumSize(960, 620);
 
@@ -160,12 +151,11 @@ void MainWindow::setupUi() {
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setSpacing(0);
 
-    // ---------------------------------------------------------
-    // 1. Left Collapsible Sidebar
-    // ---------------------------------------------------------
-    m_sidebarWidget = new QWidget(this);
+    // =========================================================
+    // 1. Left Minimal Navigation Sidebar (Liquid Glass Material)
+    // =========================================================
+    m_sidebarWidget = new Glass::GlassSidebar(this);
     m_sidebarWidget->setObjectName("sidebarWidget");
-    m_sidebarWidget->setFixedWidth(240);
 
     auto sidebarLayout = new QVBoxLayout(m_sidebarWidget);
     sidebarLayout->setContentsMargins(16, 20, 16, 16);
@@ -181,14 +171,13 @@ void MainWindow::setupUi() {
     logoRow->addWidget(m_lblLogo);
 
     m_lblDot = new QLabel("●", m_sidebarWidget);
-    m_lblDot->setStyleSheet("font-size: 10px; color: #3478F6; margin-top: 4px; border: none;");
+    m_lblDot->setStyleSheet("font-size: 10px; color: #1D1D1F; margin-top: 4px; border: none;");
     logoRow->addWidget(m_lblDot);
     logoRow->addStretch();
 
-    m_btnCollapse = new QPushButton("◀", m_sidebarWidget);
-    m_btnCollapse->setObjectName("btnSubtle");
-    m_btnCollapse->setFixedSize(28, 28);
-    m_btnCollapse->setToolTip("Collapse / Expand Sidebar");
+    m_btnCollapse = new Glass::GlassButton("◀", Glass::ButtonVariant::IconOnly, m_sidebarWidget);
+    m_btnCollapse->setObjectName("btnIconButton");
+    m_btnCollapse->setToolTip("Collapse sidebar");
     connect(m_btnCollapse, &QPushButton::clicked, this, &MainWindow::toggleSidebar);
     logoRow->addWidget(m_btnCollapse);
     sidebarLayout->addLayout(logoRow);
@@ -197,43 +186,23 @@ void MainWindow::setupUi() {
     m_lblTagline->setStyleSheet("font-size: 11px; margin-bottom: 6px; padding-left: 4px; border: none;");
     sidebarLayout->addWidget(m_lblTagline);
 
-    // Navigation List (6 Items)
+    // Navigation List with Custom Glass Item Delegate
     m_navList = new QListWidget(m_sidebarWidget);
     m_navList->setObjectName("navList");
-    m_navList->addItem(" 📊  Overview");
-    m_navList->addItem(" 📄  All Files");
+    m_navDelegate = new Glass::GlassNavigationItem(m_navList, [this]() { return m_sidebarCollapsed; });
+    m_navList->setItemDelegate(m_navDelegate);
+    m_navList->addItem(" ⊞  Overview");
+    m_navList->addItem(" ▤  All Files");
     m_navList->addItem(" 📁  Categories");
-    m_navList->addItem(" ♊  Duplicates");
+    m_navList->addItem(" ⧉  Duplicates");
     m_navList->addItem(" ⚡  Organization Plan");
-    m_navList->addItem(" 🕒  History & Journal");
+    m_navList->addItem(" ⏱  History & Journal");
     m_navList->setCurrentRow(0);
     connect(m_navList, &QListWidget::currentRowChanged, this, &MainWindow::onNavigationChanged);
     sidebarLayout->addWidget(m_navList, 1);
 
-    // Target Folder Card
-    m_pathBox = new QWidget(m_sidebarWidget);
-    m_pathBox->setObjectName("cardFolder");
-    auto pathBoxLayout = new QVBoxLayout(m_pathBox);
-    pathBoxLayout->setContentsMargins(10, 10, 10, 10);
-    pathBoxLayout->setSpacing(4);
-
-    auto lblTarget = new QLabel("Target Folder", m_pathBox);
-    lblTarget->setStyleSheet("font-size: 11px; font-weight: 600; border: none;");
-    pathBoxLayout->addWidget(lblTarget);
-
-    m_lblCurrentPath = new QLabel("-", m_pathBox);
-    m_lblCurrentPath->setStyleSheet("font-size: 11px; border: none;");
-    m_lblCurrentPath->setWordWrap(true);
-    pathBoxLayout->addWidget(m_lblCurrentPath);
-
-    m_btnSelectFolder = new QPushButton("Change Folder", m_pathBox);
-    m_btnSelectFolder->setObjectName("btnChangeFolder");
-    connect(m_btnSelectFolder, &QPushButton::clicked, this, &MainWindow::onSelectFolderClicked);
-    pathBoxLayout->addWidget(m_btnSelectFolder);
-    sidebarLayout->addWidget(m_pathBox);
-
-    // Theme Switcher Button at bottom
-    m_btnTheme = new QPushButton("🌙  Dark Mode", m_sidebarWidget);
+    // Theme Switcher Glass Button at bottom
+    m_btnTheme = new Glass::GlassButton("🌙  Dark Mode", Glass::ButtonVariant::Subtle, m_sidebarWidget);
     m_btnTheme->setObjectName("btnTheme");
     m_btnTheme->setFixedHeight(34);
     connect(m_btnTheme, &QPushButton::clicked, this, &MainWindow::toggleTheme);
@@ -241,59 +210,77 @@ void MainWindow::setupUi() {
 
     rootLayout->addWidget(m_sidebarWidget);
 
-    // ---------------------------------------------------------
-    // 2. Right Content Area (Header + Stacked Pages)
-    // ---------------------------------------------------------
+    // =========================================================
+    // 2. Right Content Area (Persistent Top Toolbar + Stack)
+    // =========================================================
     auto contentArea = new QWidget(this);
     contentArea->setObjectName("contentArea");
     auto contentLayout = new QVBoxLayout(contentArea);
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(0);
 
-    // Top Bar
-    auto topBar = new QWidget(contentArea);
-    topBar->setObjectName("topBar");
-    auto topBarLayout = new QHBoxLayout(topBar);
-    topBarLayout->setContentsMargins(36, 14, 36, 14);
-    topBarLayout->setSpacing(16);
+    // Persistent Top Liquid Glass Toolbar with Folder Selector
+    m_topBar = new Glass::GlassToolbar(contentArea);
+    m_topBar->setObjectName("topBar");
+    auto topBarLayout = new QHBoxLayout(m_topBar);
+    topBarLayout->setContentsMargins(28, 12, 28, 12);
+    topBarLayout->setSpacing(14);
 
-    auto titleBox = new QVBoxLayout();
-    titleBox->setSpacing(2);
-    m_lblHeaderTitle = new QLabel("Overview", topBar);
-    m_lblHeaderTitle->setStyleSheet("font-size: 18px; font-weight: 700; letter-spacing: -0.3px; border: none;");
-    titleBox->addWidget(m_lblHeaderTitle);
+    // Primary Folder Selector Group (Glass Panel Capsule)
+    auto folderPill = new Glass::GlassPanel(m_topBar);
+    folderPill->setObjectName("folderPill");
+    folderPill->setCornerRadius(10);
+    auto folderGroup = new QHBoxLayout(folderPill);
+    folderGroup->setContentsMargins(10, 4, 8, 4);
+    folderGroup->setSpacing(10);
 
-    m_lblHeaderSub = new QLabel("Explore folder structure, metrics and distribution", topBar);
-    m_lblHeaderSub->setStyleSheet("font-size: 12px; border: none;");
-    titleBox->addWidget(m_lblHeaderSub);
-    topBarLayout->addLayout(titleBox);
+    m_lblFolderIcon = new QLabel("📁", folderPill);
+    m_lblFolderIcon->setStyleSheet("font-size: 16px; border: none;");
+    folderGroup->addWidget(m_lblFolderIcon);
 
+    m_lblFolderName = new QLabel("No folder selected", folderPill);
+    m_lblFolderName->setStyleSheet("font-size: 13px; font-weight: 600; border: none;");
+    folderGroup->addWidget(m_lblFolderName);
+
+    m_lblFolderPath = new QLabel("", folderPill);
+    m_lblFolderPath->setStyleSheet("font-size: 11px; color: #777A73; border: none;");
+    folderGroup->addWidget(m_lblFolderPath);
+
+    m_btnChangeFolder = new Glass::GlassButton("Choose Folder", Glass::ButtonVariant::Subtle, folderPill);
+    m_btnChangeFolder->setObjectName("btnSubtle");
+    m_btnChangeFolder->setToolTip("Choose a different folder to organize");
+    connect(m_btnChangeFolder, &QPushButton::clicked, this, &MainWindow::onSelectFolderClicked);
+    folderGroup->addWidget(m_btnChangeFolder);
+
+    topBarLayout->addWidget(folderPill);
     topBarLayout->addStretch();
 
-    m_lblStatus = new QLabel("Ready", topBar);
+    // Status, Progress, and Scan Action
+    m_lblStatus = new QLabel("Ready", m_topBar);
     m_lblStatus->setStyleSheet("font-size: 12px; border: none;");
     topBarLayout->addWidget(m_lblStatus);
 
-    m_progressBar = new QProgressBar(topBar);
-    m_progressBar->setFixedWidth(160);
+    m_progressBar = new QProgressBar(m_topBar);
+    m_progressBar->setFixedWidth(140);
     m_progressBar->setFixedHeight(6);
     m_progressBar->setTextVisible(false);
     m_progressBar->setVisible(false);
     topBarLayout->addWidget(m_progressBar);
 
-    m_btnCancel = new QPushButton("Cancel", topBar);
+    m_btnCancel = new Glass::GlassButton("Cancel", Glass::ButtonVariant::Subtle, m_topBar);
     m_btnCancel->setObjectName("btnSubtle");
     m_btnCancel->setVisible(false);
     connect(m_btnCancel, &QPushButton::clicked, this, &MainWindow::onCancelClicked);
     topBarLayout->addWidget(m_btnCancel);
 
-    m_btnScan = new QPushButton("Scan Workspace", topBar);
+    m_btnScan = new Glass::GlassButton("Scan Workspace", Glass::ButtonVariant::Primary, m_topBar);
     m_btnScan->setObjectName("btnPrimary");
-    m_btnScan->setFixedHeight(36);
+    m_btnScan->setFixedHeight(34);
+    m_btnScan->setEnabled(false); // Enabled when a valid folder is selected
     connect(m_btnScan, &QPushButton::clicked, this, &MainWindow::onStartScanClicked);
     topBarLayout->addWidget(m_btnScan);
 
-    contentLayout->addWidget(topBar);
+    contentLayout->addWidget(m_topBar);
 
     // Stacked Pages
     m_stackWidget = new QStackedWidget(contentArea);
@@ -314,7 +301,8 @@ void MainWindow::setupUi() {
     contentLayout->addWidget(m_stackWidget, 1);
     rootLayout->addWidget(contentArea, 1);
 
-    // Page signal wiring
+    // Wire Onboarding / Overview signals
+    connect(m_pageOverview, &OverviewPage::chooseFolderRequested, this, &MainWindow::onSelectFolderClicked);
     connect(m_pageOverview, &OverviewPage::scanRequested, this, &MainWindow::onStartScanClicked);
     connect(m_pageOverview, &OverviewPage::reviewPlanRequested, this, &MainWindow::onReviewPlanRequested);
     connect(m_pageCategories, &CategoriesPage::categorySelected, this, &MainWindow::onCategoryFilterRequested);
@@ -328,40 +316,109 @@ void MainWindow::setupUi() {
     connect(m_shortcutK, &QShortcut::activated, this, &MainWindow::focusSearch);
 }
 
+void MainWindow::loadSettings() {
+    QSettings settings("SORTED", "SORTED");
+    QString lastPath = settings.value("lastWorkspacePath").toString();
+
+    if (!lastPath.isEmpty() && fs::exists(fs::path(lastPath.toStdWString()))) {
+        m_selectedRoot = fs::path(lastPath.toStdWString());
+        updateTopToolbarFolder();
+        m_btnScan->setEnabled(true);
+        m_lblStatus->setText("Workspace loaded. Ready to scan.");
+        m_journal.setJournalFilePath(m_selectedRoot / ".sorted_journal.json");
+        m_pageHistory->refreshHistory();
+    } else {
+        m_selectedRoot.clear();
+        updateTopToolbarFolder();
+        m_btnScan->setEnabled(false);
+        m_lblStatus->setText("Please choose a workspace.");
+        m_pageOverview->showEmptyState();
+    }
+
+    bool collapsed = settings.value("sidebarCollapsed", false).toBool();
+    if (collapsed && !m_sidebarCollapsed) {
+        toggleSidebar();
+    }
+}
+
+void MainWindow::saveSettings() {
+    QSettings settings("SORTED", "SORTED");
+    if (!m_selectedRoot.empty()) {
+        settings.setValue("lastWorkspacePath", QString::fromStdWString(m_selectedRoot.wstring()));
+    }
+    settings.setValue("sidebarCollapsed", m_sidebarCollapsed);
+}
+
+void MainWindow::updateTopToolbarFolder() {
+    if (m_selectedRoot.empty() || !fs::exists(m_selectedRoot)) {
+        m_lblFolderName->setText("No folder selected");
+        m_lblFolderPath->setText("");
+        m_lblFolderPath->setToolTip("");
+        m_btnChangeFolder->setText("Choose Folder");
+        m_btnScan->setEnabled(false);
+        return;
+    }
+
+    std::string folderName = m_selectedRoot.filename().string();
+    if (folderName.empty()) {
+        folderName = m_selectedRoot.string();
+    }
+    m_lblFolderName->setText(QString::fromStdString(folderName));
+
+    std::string fullPath = m_selectedRoot.string();
+    std::string shortPath = fullPath;
+    if (shortPath.length() > 32) {
+        shortPath = "..." + shortPath.substr(shortPath.length() - 28);
+    }
+    m_lblFolderPath->setText(QString::fromStdString("(" + shortPath + ")"));
+    m_lblFolderPath->setToolTip(QString::fromStdWString(m_selectedRoot.wstring()));
+    m_btnChangeFolder->setText("Change");
+    m_btnScan->setEnabled(true);
+}
+
+void MainWindow::showEvent(QShowEvent* event) {
+    QMainWindow::showEvent(event);
+    Glass::WindowBackdrop::apply(this, Glass::BackdropMaterial::Mica, Theme::isDark());
+}
+
 void MainWindow::toggleSidebar() {
     m_sidebarCollapsed = !m_sidebarCollapsed;
+    m_sidebarWidget->setCollapsed(m_sidebarCollapsed, true);
     if (m_sidebarCollapsed) {
-        m_sidebarWidget->setFixedWidth(68);
-        m_lblLogo->setText("s.");
+        m_lblLogo->setText("S•");
         m_lblTagline->setVisible(false);
-        m_pathBox->setVisible(false);
         m_btnCollapse->setText("▶");
+        m_btnCollapse->setToolTip("Expand sidebar");
         m_btnTheme->setText(Theme::isDark() ? "☀️" : "🌙");
-        m_navList->item(0)->setText("📊");
-        m_navList->item(1)->setText("📄");
+        m_btnTheme->setToolTip(Theme::isDark() ? "Switch to Light Mode" : "Switch to Dark Mode");
+        m_navList->item(0)->setText("⊞");
+        m_navList->item(1)->setText("▤");
         m_navList->item(2)->setText("📁");
-        m_navList->item(3)->setText("♊");
+        m_navList->item(3)->setText("⧉");
         m_navList->item(4)->setText("⚡");
-        m_navList->item(5)->setText("🕒");
+        m_navList->item(5)->setText("⏱");
     } else {
-        m_sidebarWidget->setFixedWidth(240);
         m_lblLogo->setText("sorted.");
         m_lblTagline->setVisible(true);
-        m_pathBox->setVisible(true);
         m_btnCollapse->setText("◀");
+        m_btnCollapse->setToolTip("Collapse sidebar");
         m_btnTheme->setText(Theme::isDark() ? "☀️  Light Mode" : "🌙  Dark Mode");
-        m_navList->item(0)->setText(" 📊  Overview");
-        m_navList->item(1)->setText(" 📄  All Files");
+        m_btnTheme->setToolTip("");
+        m_navList->item(0)->setText(" ⊞  Overview");
+        m_navList->item(1)->setText(" ▤  All Files");
         m_navList->item(2)->setText(" 📁  Categories");
-        m_navList->item(3)->setText(" ♊  Duplicates");
+        m_navList->item(3)->setText(" ⧉  Duplicates");
         m_navList->item(4)->setText(" ⚡  Organization Plan");
-        m_navList->item(5)->setText(" 🕒  History & Journal");
+        m_navList->item(5)->setText(" ⏱  History & Journal");
     }
+    m_navList->update();
+    saveSettings();
 }
 
 void MainWindow::toggleTheme() {
     Theme::toggleTheme();
     applyTheme();
+    Glass::WindowBackdrop::setDarkMode(this, Theme::isDark());
 }
 
 void MainWindow::focusSearch() {
@@ -377,14 +434,12 @@ void MainWindow::applyTheme() {
 
     QString textPri = Theme::getTextPrimary();
     QString textSec = Theme::getTextSecondary();
-    QString textMuted = Theme::isDark() ? Theme::DarkTextMuted : Theme::LightTextMuted;
-    QString surface = Theme::getSurface();
-    QString border = Theme::getBorder();
+    QString textMuted = Theme::getTextMuted();
 
     m_lblLogo->setStyleSheet(QString("font-size: 22px; font-weight: 700; color: %1; letter-spacing: -0.5px; border: none;").arg(textPri));
     m_lblTagline->setStyleSheet(QString("font-size: 11px; color: %1; margin-bottom: 6px; padding-left: 4px; border: none;").arg(textMuted));
-    m_lblHeaderTitle->setStyleSheet(QString("font-size: 18px; font-weight: 700; color: %1; letter-spacing: -0.3px; border: none;").arg(textPri));
-    m_lblHeaderSub->setStyleSheet(QString("font-size: 12px; color: %1; border: none;").arg(textSec));
+    m_lblFolderName->setStyleSheet(QString("font-size: 13px; font-weight: 600; color: %1; border: none;").arg(textPri));
+    m_lblFolderPath->setStyleSheet(QString("font-size: 11px; color: %1; border: none;").arg(textSec));
     m_lblStatus->setStyleSheet(QString("font-size: 12px; color: %1; border: none;").arg(textSec));
 
     if (m_sidebarCollapsed) {
@@ -402,42 +457,27 @@ void MainWindow::applyTheme() {
     m_pageHistory->applyTheme();
 }
 
-void MainWindow::updateRootPathDisplay() {
-    std::string pathStr = m_selectedRoot.string();
-    if (pathStr.length() > 28) {
-        pathStr = "..." + pathStr.substr(pathStr.length() - 25);
-    }
-    m_lblCurrentPath->setText(QString::fromStdString(pathStr));
-    m_lblCurrentPath->setToolTip(QString::fromStdWString(m_selectedRoot.wstring()));
-}
-
 void MainWindow::onSelectFolderClicked() {
-    QString selected = QFileDialog::getExistingDirectory(
-        this, "Select Target Folder", QString::fromStdWString(m_selectedRoot.wstring())
-    );
+    QString startDir = m_selectedRoot.empty() ?
+        QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) :
+        QString::fromStdWString(m_selectedRoot.wstring());
+
+    QString selected = QFileDialog::getExistingDirectory(this, "Select Target Workspace", startDir);
     if (!selected.isEmpty()) {
         m_selectedRoot = fs::path(selected.toStdWString());
-        updateRootPathDisplay();
+        saveSettings();
+        updateTopToolbarFolder();
+
         m_journal.setJournalFilePath(m_selectedRoot / ".sorted_journal.json");
         m_pageHistory->refreshHistory();
+
+        // Scan the selected folder
         onStartScanClicked();
     }
 }
 
 void MainWindow::onNavigationChanged(int index) {
     m_stackWidget->setCurrentIndex(index);
-    const char* titles[][2] = {
-        {"Overview", "Workspace summary, storage footprint, and category breakdown"},
-        {"All Files", "Interactive catalogue of all indexed files with Merge Sort and search"},
-        {"Categories", "Extension taxonomy and planned folder destinations"},
-        {"Duplicates", "Exact duplicate groups detected by streaming SHA-256"},
-        {"Organization Plan", "Review proposed safe moves and collision handling"},
-        {"History & Journal", "Audit trail of executed moves with instant rollback"}
-    };
-    if (index >= 0 && index < 6) {
-        m_lblHeaderTitle->setText(titles[index][0]);
-        m_lblHeaderSub->setText(titles[index][1]);
-    }
 }
 
 void MainWindow::onCategoryFilterRequested(const QString& category) {
@@ -450,6 +490,11 @@ void MainWindow::onReviewPlanRequested() {
 }
 
 void MainWindow::onStartScanClicked() {
+    if (m_selectedRoot.empty() || !fs::exists(m_selectedRoot)) {
+        onSelectFolderClicked();
+        return;
+    }
+
     if (m_scanThread && m_scanThread->isRunning()) return;
 
     m_btnScan->setEnabled(false);

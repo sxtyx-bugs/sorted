@@ -5,38 +5,56 @@ namespace Ui {
 
 ColorTheme Theme::currentTheme = ColorTheme::Light;
 
-const QString Theme::AccentBlue        = "#3478F6";
-const QString Theme::AccentHover       = "#2463D8";
-const QString Theme::AccentTintLight   = "#EAF1FF";
-const QString Theme::AccentTintDark    = "#1E2D4A";
-const QString Theme::InfoSurfaceLight  = "#F2F6FF";
-const QString Theme::InfoSurfaceDark   = "#172133";
+// --- Typography: SF Pro with Windows & Cross-Platform Fallback ---
+const QString Theme::FontFamilyDisplay = "'SF Pro Display', 'SF Pro Text', 'SF Pro', 'Segoe UI Variable Display', 'Segoe UI Variable Text', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
+const QString Theme::FontFamilyText    = "'SF Pro Text', 'SF Pro Display', 'SF Pro', 'Segoe UI Variable Text', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
+const QString Theme::FontFamilyMono    = "'SF Mono', 'Cascadia Code', 'Consolas', 'Courier New', monospace";
 
-const QString Theme::LightBgCanvas     = "#FAFAF8";
-const QString Theme::LightBgSidebar    = "#F4F4F0";
+const QString Theme::AccentCharcoal    = "#1D1D1F";
+const QString Theme::AccentHover       = "#3A3A3C";
+const QString Theme::AccentTintLight   = "#F1F1EF";
+const QString Theme::AccentTintDark    = "#333333";
+const QString Theme::InfoSurfaceLight  = "#F7F7F5";
+const QString Theme::InfoSurfaceDark   = "#222222";
+
+const QString Theme::LightBgCanvas     = "#F7F7F5";
+const QString Theme::LightBgSidebar    = "#F2F2F0";
 const QString Theme::LightBgSurface    = "#FFFFFF";
-const QString Theme::LightBgHover      = "#F0F0EB";
-const QString Theme::LightBgSelected   = "#3478F6";
-const QString Theme::LightTextPrimary  = "#242521";
-const QString Theme::LightTextSecondary= "#777A73";
-const QString Theme::LightTextMuted    = "#999A93";
-const QString Theme::LightBorder       = "#E6E6E0";
+const QString Theme::LightBgHover      = "#F1F1EF";
+const QString Theme::LightBgSelected   = "#EBEBEB";
+const QString Theme::LightTextPrimary  = "#1D1D1F";
+const QString Theme::LightTextSecondary= "#86868B";
+const QString Theme::LightTextMuted    = "#A1A1A6";
+const QString Theme::LightBorder       = "#E5E5E5";
 const QString Theme::LightBorderSubtle = "#EDEDE8";
 
 const QString Theme::DarkBgCanvas      = "#191919";
 const QString Theme::DarkBgSidebar     = "#202020";
 const QString Theme::DarkBgSurface     = "#262626";
 const QString Theme::DarkBgHover       = "#2F2F2F";
-const QString Theme::DarkBgSelected    = "#3478F6";
-const QString Theme::DarkTextPrimary   = "#EDEDEC";
-const QString Theme::DarkTextSecondary = "#9B9B97";
-const QString Theme::DarkTextMuted     = "#6A6A65";
-const QString Theme::DarkBorder        = "#333330";
-const QString Theme::DarkBorderSubtle  = "#2B2B28";
+const QString Theme::DarkBgSelected    = "#383838";
+const QString Theme::DarkTextPrimary   = "#F5F5F7";
+const QString Theme::DarkTextSecondary = "#A1A1A6";
+const QString Theme::DarkTextMuted     = "#6E6E73";
+const QString Theme::DarkBorder        = "#3A3A3C";
+const QString Theme::DarkBorderSubtle  = "#303032";
 
-const QString Theme::StatusSuccess     = "#2E7D32";
-const QString Theme::StatusWarning     = "#C07700";
+const QString Theme::StatusSuccess     = "#1D1D1F";
+const QString Theme::StatusWarning     = "#48484A";
 const QString Theme::StatusDanger      = "#D32F2F";
+
+// Liquid Glass Translucent RGBA definitions
+const QString Theme::GlassLightCanvas   = "rgba(247, 247, 245, 0.75)";
+const QString Theme::GlassLightSidebar  = "rgba(242, 242, 240, 0.78)";
+const QString Theme::GlassLightSurface  = "rgba(255, 255, 255, 0.82)";
+const QString Theme::GlassLightCard     = "rgba(255, 255, 255, 0.85)";
+const QString Theme::GlassLightBorder   = "rgba(255, 255, 255, 0.80)";
+
+const QString Theme::GlassDarkCanvas    = "rgba(25, 25, 25, 0.78)";
+const QString Theme::GlassDarkSidebar   = "rgba(32, 32, 32, 0.75)";
+const QString Theme::GlassDarkSurface   = "rgba(38, 38, 38, 0.80)";
+const QString Theme::GlassDarkCard      = "rgba(42, 42, 45, 0.78)";
+const QString Theme::GlassDarkBorder    = "rgba(255, 255, 255, 0.16)";
 
 QPalette Theme::getPalette(ColorTheme theme) {
     QPalette p;
@@ -51,9 +69,9 @@ QPalette Theme::getPalette(ColorTheme theme) {
         p.setColor(QPalette::Button, QColor(LightBgSurface));
         p.setColor(QPalette::ButtonText, QColor(LightTextPrimary));
         p.setColor(QPalette::BrightText, QColor(StatusDanger));
-        p.setColor(QPalette::Link, QColor(AccentBlue));
-        p.setColor(QPalette::Highlight, QColor(AccentBlue));
-        p.setColor(QPalette::HighlightedText, QColor("#FFFFFF"));
+        p.setColor(QPalette::Link, QColor(LightTextPrimary));
+        p.setColor(QPalette::Highlight, QColor(LightBgSelected));
+        p.setColor(QPalette::HighlightedText, QColor(LightTextPrimary));
         p.setColor(QPalette::PlaceholderText, QColor(LightTextMuted));
         p.setColor(QPalette::Disabled, QPalette::Text, QColor(LightTextMuted));
         p.setColor(QPalette::Disabled, QPalette::WindowText, QColor(LightTextMuted));
@@ -69,9 +87,9 @@ QPalette Theme::getPalette(ColorTheme theme) {
         p.setColor(QPalette::Button, QColor(DarkBgSurface));
         p.setColor(QPalette::ButtonText, QColor(DarkTextPrimary));
         p.setColor(QPalette::BrightText, QColor("#FF6B6B"));
-        p.setColor(QPalette::Link, QColor(AccentBlue));
-        p.setColor(QPalette::Highlight, QColor(AccentBlue));
-        p.setColor(QPalette::HighlightedText, QColor("#FFFFFF"));
+        p.setColor(QPalette::Link, QColor(DarkTextPrimary));
+        p.setColor(QPalette::Highlight, QColor(DarkBgSelected));
+        p.setColor(QPalette::HighlightedText, QColor(DarkTextPrimary));
         p.setColor(QPalette::PlaceholderText, QColor(DarkTextMuted));
         p.setColor(QPalette::Disabled, QPalette::Text, QColor(DarkTextMuted));
         p.setColor(QPalette::Disabled, QPalette::WindowText, QColor(DarkTextMuted));
@@ -90,21 +108,20 @@ QString Theme::getGlobalStyleSheet(ColorTheme theme) {
     QString textSec = dark ? DarkTextSecondary : LightTextSecondary;
     QString textMuted = dark ? DarkTextMuted : LightTextMuted;
     QString border = dark ? DarkBorder : LightBorder;
-    QString borderSubtle = dark ? DarkBorderSubtle : LightBorderSubtle;
     QString tint = dark ? AccentTintDark : AccentTintLight;
     QString infoSurface = dark ? InfoSurfaceDark : InfoSurfaceLight;
 
     return QString(
-        "QMainWindow { background-color: %1; color: %2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; } "
-        "QWidget { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color: %2; } "
+        "QMainWindow { background-color: %1; color: %2; font-family: %11; } "
+        "QWidget { font-family: %11; color: %2; } "
         
         // Buttons
         "QPushButton { "
         "  background-color: %3; "
         "  color: %2; "
         "  border: 1px solid %4; "
-        "  border-radius: 8px; "
-        "  padding: 7px 14px; "
+        "  border-radius: 6px; "
+        "  padding: 6px 14px; "
         "  font-size: 13px; "
         "  font-weight: 500; "
         "} "
@@ -118,7 +135,7 @@ QString Theme::getGlobalStyleSheet(ColorTheme theme) {
         "QPushButton:disabled { "
         "  color: %7; "
         "  border-color: %4; "
-        "  opacity: 0.6; "
+        "  opacity: 0.5; "
         "} "
         
         // Primary Cobalt Blue Button
@@ -127,6 +144,9 @@ QString Theme::getGlobalStyleSheet(ColorTheme theme) {
         "  color: #FFFFFF; "
         "  border: none; "
         "  font-weight: 600; "
+        "  border-radius: 10px; "
+        "  min-height: 24px; "
+        "  padding: 6px 16px; "
         "} "
         "QPushButton#btnPrimary:hover { "
         "  background-color: %9; "
@@ -134,16 +154,55 @@ QString Theme::getGlobalStyleSheet(ColorTheme theme) {
         "QPushButton#btnPrimary:pressed { "
         "  background-color: #1A54BD; "
         "} "
+        "QPushButton#btnPrimary:disabled { "
+        "  background-color: %4; "
+        "  color: %7; "
+        "} "
 
         // Secondary / Subtle Button
         "QPushButton#btnSubtle { "
         "  background-color: %3; "
         "  border: 1px solid %4; "
         "  color: %2; "
+        "  border-radius: 10px; "
+        "  min-height: 24px; "
+        "  padding: 6px 14px; "
         "} "
         "QPushButton#btnSubtle:hover { "
         "  background-color: %5; "
         "  color: %2; "
+        "} "
+        "QPushButton#btnSubtle:pressed { "
+        "  background-color: %4; "
+        "} "
+
+        // Icon Button (Collapse/Expand)
+        "QPushButton#btnIconButton { "
+        "  background-color: transparent; "
+        "  border: 1px solid %4; "
+        "  border-radius: 9px; "
+        "  min-width: 32px; "
+        "  max-width: 34px; "
+        "  min-height: 32px; "
+        "  max-height: 34px; "
+        "  padding: 0px; "
+        "} "
+        "QPushButton#btnIconButton:hover { "
+        "  background-color: %5; "
+        "  border-color: %8; "
+        "} "
+
+        // Theme Toggle Button
+        "QPushButton#btnTheme { "
+        "  background-color: %3; "
+        "  border: 1px solid %4; "
+        "  color: %2; "
+        "  border-radius: 10px; "
+        "  padding: 6px 12px; "
+        "  font-size: 12px; "
+        "} "
+        "QPushButton#btnTheme:hover { "
+        "  background-color: %5; "
         "} "
 
         // Inputs
@@ -151,7 +210,7 @@ QString Theme::getGlobalStyleSheet(ColorTheme theme) {
         "  background-color: %3; "
         "  color: %2; "
         "  border: 1px solid %4; "
-        "  border-radius: 8px; "
+        "  border-radius: 10px; "
         "  padding: 7px 12px; "
         "  font-size: 13px; "
         "} "
@@ -163,7 +222,7 @@ QString Theme::getGlobalStyleSheet(ColorTheme theme) {
         "  background-color: %3; "
         "  color: %2; "
         "  border: 1px solid %4; "
-        "  border-radius: 8px; "
+        "  border-radius: 10px; "
         "  padding: 6px 12px; "
         "  font-size: 13px; "
         "} "
@@ -216,13 +275,13 @@ QString Theme::getGlobalStyleSheet(ColorTheme theme) {
         "QScrollBar:vertical { "
         "  border: none; "
         "  background: transparent; "
-        "  width: 8px; "
+        "  width: 7px; "
         "  margin: 0px; "
         "} "
         "QScrollBar::handle:vertical { "
         "  background: %4; "
         "  min-height: 24px; "
-        "  border-radius: 4px; "
+        "  border-radius: 3px; "
         "} "
         "QScrollBar::handle:vertical:hover { "
         "  background: %7; "
@@ -240,7 +299,7 @@ QString Theme::getGlobalStyleSheet(ColorTheme theme) {
         "  padding: 4px; "
         "} "
         "QMenu::item { "
-        "  padding: 6px 16px; "
+        "  padding: 6px 14px; "
         "  border-radius: 4px; "
         "  font-size: 13px; "
         "} "
@@ -253,10 +312,10 @@ QString Theme::getGlobalStyleSheet(ColorTheme theme) {
         "  color: %2; "
         "  border: 1px solid %4; "
         "  border-radius: 6px; "
-        "  padding: 5px 8px; "
+        "  padding: 4px 8px; "
         "  font-size: 12px; "
         "} "
-    ).arg(bgCanvas, textPri, bgSurface, border, bgHover, bgSelected, textMuted, AccentBlue, AccentHover, tint);
+    ).arg(bgCanvas, textPri, bgSurface, border, bgHover, bgSelected, textMuted, AccentCharcoal, AccentHover, tint, FontFamilyText);
 }
 
 QString Theme::getTableStyleSheet(ColorTheme theme) {
@@ -274,11 +333,12 @@ QString Theme::getTableStyleSheet(ColorTheme theme) {
         "  background-color: %1; "
         "  color: %2; "
         "  border: 1px solid %3; "
-        "  border-radius: 10px; "
+        "  border-radius: 8px; "
         "  gridline-color: %4; "
         "  selection-background-color: %5; "
         "  selection-color: #FFFFFF; "
         "  outline: none; "
+        "  font-variant-numeric: tabular-nums; "
         "} "
         "QTableView::item, QTableWidget::item { "
         "  color: %2; "
@@ -309,7 +369,7 @@ QString Theme::getTableStyleSheet(ColorTheme theme) {
         "  border-bottom: 1px solid %3; "
         "  border-right: 1px solid %4; "
         "} "
-    ).arg(bgSurface, textPri, border, borderSubtle, AccentBlue, bgHover, bgCanvas, textSec);
+    ).arg(bgSurface, textPri, border, borderSubtle, AccentCharcoal, bgHover, bgCanvas, textSec);
 }
 
 QString Theme::getTreeStyleSheet(ColorTheme theme) {
@@ -326,16 +386,17 @@ QString Theme::getTreeStyleSheet(ColorTheme theme) {
         "  background-color: %1; "
         "  color: %2; "
         "  border: 1px solid %3; "
-        "  border-radius: 10px; "
+        "  border-radius: 8px; "
         "  selection-background-color: %4; "
         "  selection-color: #FFFFFF; "
         "  outline: none; "
         "  padding: 4px; "
+        "  font-variant-numeric: tabular-nums; "
         "} "
         "QTreeView::item, QTreeWidget::item { "
         "  color: %2; "
         "  padding: 6px 8px; "
-        "  border-radius: 6px; "
+        "  border-radius: 5px; "
         "} "
         "QTreeView::item:hover, QTreeWidget::item:hover { "
         "  background-color: %5; "
@@ -355,7 +416,7 @@ QString Theme::getTreeStyleSheet(ColorTheme theme) {
         "  border-bottom: 1px solid %3; "
         "  border-right: 1px solid %3; "
         "} "
-    ).arg(bgSurface, textPri, border, AccentBlue, bgHover, bgCanvas, textSec);
+    ).arg(bgSurface, textPri, border, AccentCharcoal, bgHover, bgCanvas, textSec);
 }
 
 QString Theme::getSidebarStyleSheet(ColorTheme theme) {
@@ -379,11 +440,11 @@ QString Theme::getSidebarStyleSheet(ColorTheme theme) {
         "} "
         "QListWidget::item { "
         "  padding: 8px 12px; "
-        "  border-radius: 8px; "
+        "  border-radius: 6px; "
         "  font-size: 13px; "
         "  font-weight: 500; "
         "  color: %3; "
-        "  margin-bottom: 3px; "
+        "  margin-bottom: 2px; "
         "} "
         "QListWidget::item:hover { "
         "  background-color: %4; "
@@ -394,15 +455,21 @@ QString Theme::getSidebarStyleSheet(ColorTheme theme) {
         "  color: %7; "
         "  font-weight: 600; "
         "} "
-    ).arg(bgSidebar, border, textSec, bgHover, textPri, tint, AccentBlue);
+    ).arg(bgSidebar, border, textSec, bgHover, textPri, tint, AccentCharcoal);
 }
 
 QString Theme::getCardStyleSheet(ColorTheme theme) {
     bool dark = (theme == ColorTheme::Dark);
     QString bgSurface = dark ? DarkBgSurface : LightBgSurface;
+    QString bgCanvas = dark ? DarkBgCanvas : LightBgCanvas;
     QString border = dark ? DarkBorder : LightBorder;
 
     return QString(
+        "QFrame#folderPill { "
+        "  background-color: %4; "
+        "  border: 1px solid %2; "
+        "  border-radius: 10px; "
+        "} "
         "QWidget#statCard, QFrame#statCard { "
         "  background-color: %1; "
         "  border: 1px solid %2; "
@@ -411,14 +478,14 @@ QString Theme::getCardStyleSheet(ColorTheme theme) {
         "QFrame#noticeBanner { "
         "  background-color: %3; "
         "  border: 1px solid %2; "
-        "  border-radius: 8px; "
+        "  border-radius: 10px; "
         "} "
         "QFrame#bottomActionBar { "
         "  background-color: %1; "
         "  border-top: 1px solid %2; "
         "  border-radius: 0px 0px 10px 10px; "
         "} "
-    ).arg(bgSurface, border, dark ? InfoSurfaceDark : InfoSurfaceLight);
+    ).arg(bgSurface, border, dark ? InfoSurfaceDark : InfoSurfaceLight, bgCanvas);
 }
 
 QString Theme::getBadgeStyleSheet(const QString& type, ColorTheme theme) {

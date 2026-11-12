@@ -108,6 +108,25 @@ bool FileOperationService::safeMoveOrCopy(
         return false;
     }
 
+    // Guardrail 2: Reject nested source files if workspace root is configured
+    if (!m_workspaceRoot.empty()) {
+        fs::path normSrcParent = fs::weakly_canonical(source.parent_path(), ec);
+        fs::path normRoot = fs::weakly_canonical(m_workspaceRoot, ec);
+        if (normSrcParent != normRoot) {
+            errorMsg = "Security rejection: Source file is inside a protected subfolder. Only direct root-level files can be moved: " + source.string();
+            return false;
+        }
+
+        // Guardrail 3: Output directory isolation (destination must be within <workspaceRoot>/Sorted)
+        fs::path expectedSorted = normRoot / "Sorted";
+        fs::path normDest = fs::weakly_canonical(destination, ec);
+        auto [rootEnd, _] = std::mismatch(expectedSorted.begin(), expectedSorted.end(), normDest.begin());
+        if (rootEnd != expectedSorted.end()) {
+            errorMsg = "Security rejection: Destination must be inside the Sorted output directory: " + destination.string();
+            return false;
+        }
+    }
+
     // Check destination does NOT exist
     if (fs::exists(destination, ec)) {
         errorMsg = "Destination file already exists; refused to overwrite: " + destination.string();

@@ -28,6 +28,8 @@ public:
     explicit FileOperationService(OperationJournal* journal = nullptr);
 
     void setJournal(OperationJournal* journal) { m_journal = journal; }
+    void setWorkspaceRoot(const fs::path& rootPath) { m_workspaceRoot = rootPath; }
+    const fs::path& getWorkspaceRoot() const { return m_workspaceRoot; }
 
     /**
      * @brief Executes an individual MoveOperation safely.
@@ -55,6 +57,7 @@ private:
     bool safeMoveOrCopy(const fs::path& source, const fs::path& destination, std::string& errorMsg);
 
     OperationJournal* m_journal = nullptr;
+    fs::path m_workspaceRoot;
 };
 
 } // namespace Operations

@@ -4,17 +4,17 @@
 
 ### **Safe, Preview-First Desktop File Organizer & DAA Algorithm Suite**
 
-*Designed with the minimalism of Apple macOS and the calm clarity of Notion.*
+*Native C++17 & Qt 6 Widgets Desktop Application for macOS & Windows 11*
 
+[![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?style=flat-square&logo=apple)](https://github.com/satya/SORTED)
+[![Windows 11](https://img.shields.io/badge/Windows-11%20x64-0078D4?style=flat-square&logo=windows)](https://github.com/satya/SORTED)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?style=flat-square&logo=c%2B%2B)](https://en.cppreference.com/w/cpp/17)
 [![Qt 6](https://img.shields.io/badge/GUI-Qt%206%20Widgets-41CD52?style=flat-square&logo=qt)](https://www.qt.io/)
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python)](https://python.org)
-[![PySide6](https://img.shields.io/badge/Desktop-PySide6-41CD52?style=flat-square&logo=qt)](https://pypi.org/project/PySide6/)
-[![DAA Benchmark](https://img.shields.io/badge/DAA%20Sort-%200.13%20ms%20(N%3D100)-3478F6?style=flat-square)](docs/BENCHMARK_REPORT.md)
-[![Safety](https://img.shields.io/badge/Safety-Zero%20Overwrite%20Policy-2E7D32?style=flat-square)](#-safety-architecture--zero-overwrite-policy)
+[![CI/CD](https://img.shields.io/badge/Build-GitHub%20Actions-2088FF?style=flat-square&logo=githubactions)](.github/workflows/release.yml)
+[![Safety](https://img.shields.io/badge/Safety-Zero%20Overwrite%20Policy-2E7D32?style=flat-square)](#-safety-architecture--root-only-scope-policy)
 [![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](LICENSE)
 
-[**Quick Start**](#-quick-start) • [**Design System**](#-apple--notion-design-system) • [**DAA Algorithms**](#-daa-algorithms--complexity) • [**Benchmarks**](#-empirical-benchmarks) • [**Workspace Views**](#-workspace-views) • [**Safety Policy**](#-safety-architecture--zero-overwrite-policy)
+[**Installation**](#-installation) • [**Architecture**](#-architecture--design-system) • [**DAA Algorithms**](#-daa-algorithms--complexity) • [**Build Instructions**](#-building-from-source) • [**CI/CD Pipeline**](#-automated-github-actions-release-pipeline) • [**Safety Policy**](#-safety-architecture--root-only-scope-policy)
 
 ---
 
@@ -22,19 +22,37 @@
 
 ## 📌 Executive Summary
 
-**SORTED** is a high-performance desktop productivity application engineered to solve cluttered directories (such as `Downloads/` or `Desktop/`) without the destructive risks of traditional file clean-up utilities. 
+**SORTED** is a high-performance, native desktop productivity application engineered to organize cluttered directories (such as `Downloads/` or `Desktop/`) without the destructive risks of traditional file clean-up utilities. 
 
 Built on a foundation of classic **Design and Analysis of Algorithms (DAA)** principles—including **stable Divide-and-Conquer Merge Sort**, **two-stage streaming SHA-256 duplicate detection**, and **deterministic greedy collision planning**—SORTED enforces a strict **preview-first** architecture:
-* **No file is ever moved without user review and explicit approval.**
-* **Existing files are never overwritten.** Name collisions are resolved with clean incremental suffixes (`report (1).pdf`).
-* **Duplicates are detected byte-for-byte and never deleted automatically.**
-* **Every atomic move is journaled** in `.sorted_journal.json` and can be reverted with a single click.
+* **Root-Only Scope:** Only direct child files of the selected workspace are eligible for organization. Existing subdirectories are strictly protected and never recursed into or modified.
+* **Preview-First Execution:** No file is ever moved without user review and explicit approval.
+* **Zero-Overwrite Policy:** Existing destination files are never overwritten. Path collisions are resolved with clean incremental suffixes (`report (1).pdf`).
+* **Non-Destructive Duplicates:** Exact duplicate files are detected byte-for-byte and never deleted automatically.
+* **Persistent Journaling:** Every move is journaled in `.sorted_journal.json` (with automatic migration to per-user `QStandardPaths::AppDataLocation`) and can be reverted with a single click.
 
 ---
 
-## 🎨 Apple × Notion Design System
+## 📦 Installation
 
-SORTED replaces chaotic admin panels and cyber-punk clutter with an editorial, desktop-native interface inspired by **Apple macOS Human Interface Guidelines** and **Notion's minimalist workspace hierarchy**.
+### macOS (Apple Silicon & Intel)
+1. Download **`SORTED-1.0.0-macOS-arm64.dmg`** (for M1/M2/M3/M4 Macs) or **`SORTED-1.0.0-macOS-x86_64.dmg`** (for Intel Macs) from [GitHub Releases](https://github.com/satya/SORTED/releases).
+2. Double-click to mount the disk image.
+3. Drag **`SORTED.app`** into your **`Applications`** folder.
+4. Launch **SORTED** from Launchpad or Finder.
+
+> [!NOTE]
+> For unsigned preview builds on macOS, right-click `SORTED.app` and choose **Open**, then confirm the prompt, or run `xattr -cr /Applications/SORTED.app`. Fully notarized production builds pass Gatekeeper automatically.
+
+### Windows 11 / 10 (64-bit)
+1. Download **`SORTED-1.0.0-windows-x64-Setup.exe`** or the portable archive **`SORTED-1.0.0-windows-x64.zip`** from [GitHub Releases](https://github.com/satya/SORTED/releases).
+2. Run the Setup Wizard to install SORTED with Start Menu and Desktop shortcuts, or extract the portable ZIP and run `SORTED.exe`.
+
+---
+
+## 🎨 Architecture & Design System
+
+SORTED pairs high-performance native C++17 logic with an Apple Liquid Glass-inspired visual interface:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -43,267 +61,151 @@ SORTED replaces chaotic admin panels and cyber-punk clutter with an editorial, d
 │ sorted.  [◀]  │  Overview                                           Merge Sort: O(n log n)│
 │ Preview first │  Workspace metrics, storage footprint, and category distribution       │
 │               ├────────────────────────────────────────────────────────────────────────┤
-│ 📊 Overview   │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
-│ 📄 All Files  │  │ TOTAL FILES  │ │ TOTAL VOLUME │ │ CATEGORIES   │ │ DUPLICATES   │   │
+│ ⊞ Overview    │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
+│ ▤ All Files   │  │ TOTAL FILES  │ │ TOTAL VOLUME │ │ CATEGORIES   │ │ DUPLICATES   │   │
 │ 📁 Categories │  │ 100          │ │ 4.82 MB      │ │ 8            │ │ 3 groups     │   │
-│ ♊ Duplicates │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘   │
+│ ⧉ Duplicates │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘   │
 │ ⚡ Organize    │                                                                        │
-│ 🕒 History    │  Category Distribution (44px row heights, high-contrast typography)    │
+│ ⏱ History     │  Category Distribution (44px row heights, high-contrast typography)    │
 │               │  ┌───────────────────────┬────────────┬──────────────┬───────────────┐ │
 │ Target:       │  │ Category              │ Files      │ Volume       │ % Share       │ │
-│ C:\Downloads  │  ├───────────────────────┼────────────┼──────────────┼───────────────┤ │
+│ ~/Downloads   │  ├───────────────────────┼────────────┼──────────────┼───────────────┤ │
 │ [Change]      │  │ 📄 Documents          │ 24         │ 1.2 MB       │ 24.0%         │ │
 │               │  │ 🖼️ Images             │ 20         │ 1.8 MB       │ 20.0%         │ │
 │ 🌙 Dark Mode  │  │ 💻 Code               │ 18         │ 240 KB       │ 18.0%         │ │
 └───────────────┴──┴───────────────────────┴────────────┴──────────────┴───────────────┴─┘
 ```
 
-### Color Palette: Apple Cobalt Blue (`#3478F6`)
-
-| Element | Light Theme | Dark Theme | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Primary Accent** | `#3478F6` | `#3478F6` | Active navigation, primary actions, progress |
-| **Accent Hover** | `#2463D8` | `#2463D8` | Interactive button hover |
-| **Light Blue Tint** | `#EAF1FF` | `#1E2D4A` | Selected navigation pill, subtle indicators |
-| **Canvas** | `#FAFAF8` | `#191919` | Main application background (Notion style) |
-| **Sidebar Surface** | `#F4F4F0` | `#202020` | Persistent left navigation pane |
-| **Card / Grid Surface** | `#FFFFFF` | `#262626` | Data tables, cards, modal dialogs |
-| **Primary Text** | `#242521` | `#EDEDEC` | Charcoal high-contrast legible text |
-| **Secondary Text** | `#777A73` | `#9B9B97` | Column headers, paths, metrics |
-| **Borders** | `#E6E6E0` | `#333330` | Clean 1px structural dividing lines |
-| **Success Status** | `#2E7D32` / `#E8F5E9` | `#66BB6A` / `#173822` | Ready status, completed operations |
-| **Warning Status** | `#C07700` / `#FFF3E0` | `#FFA726` / `#382A12` | Auto-resolved collisions, duplicates |
-| **Danger Status** | `#D32F2F` / `#FFEBEE` | `#EF5350` / `#3B1C1C` | Scan errors, failed moves |
-
-### Interface Engineering Standards
-* **Zero Invisible Text Guarantee:** Explicit `QPalette` locking and complete QSS styling for all states (`normal`, `hover`, `selected`, `disabled`) prevent white-on-white text rendering issues on any host OS theme.
-* **44px Row Height System:** All tables and tree views enforce `verticalHeader()->setDefaultSectionSize(44)` with 8–12px padding for desktop legibility.
-* **Collapsible Sidebar:** Dynamically toggles between `240px` (full labels) and `68px` (compact icons with tooltip hover) to maximize data view area.
-* **Global `Ctrl+K` Keyboard Navigation:** Instantly focuses the global file search bar from any view.
-* **Live Theme Switcher:** One-click dynamic switching between Light and genuine Dark modes without losing runtime model state.
+### Key UI Features
+* **Restrained Monochrome Palette:** Apple-inspired neutrals (`#F7F7F5` canvas, `#FFFFFF` surfaces, `#1D1D1F` charcoal typography, `#86868B` secondary text, `#E5E5E5` borders).
+* **Fully Inspectable Paths:** Organization and review tables provide horizontally scrollable, expansive current and destination path columns with hover tooltips and instant full-path copy.
+* **Liquid Glass Components:** Reusable Qt Widgets (`GlassPanel`, `GlassSidebar`, `GlassToolbar`, `GlassButton`, `GlassSearchField`, `GlassDialog`) featuring native Windows 11 DWM Mica/Acrylic backdrops and graceful macOS fallbacks.
+* **Collapsible Sidebar:** Animated toggle between 240px expanded navigation and 68px compact icon bar.
 
 ---
 
-## 💻 Workspace Views
+## 📂 Production Repository Structure
 
-SORTED organizes file management into 6 dedicated, non-destructive views:
-
-### 1. Overview
-* **Telemetry Metric Cards:** Displays Total Files Scanned, Total Storage Indexed, Unique Category Count, and Exact Duplicate Groups.
-* **Scan Telemetry Strip:** Real-time benchmark reporting for scan traversal time (ms), classification time (ms), and SHA-256 duplicate hashing throughput.
-* **Category Breakdown:** Proportional volume table with percentage bars.
-
-### 2. All Files
-* **Interactive Catalogue:** Complete recursive index of all discovered files.
-* **DAA Merge Sort Controls:** Instantly sort records by Name (A-Z), Size (Smallest first), or Size (Largest first) utilizing the custom $\mathcal{O}(n \log n)$ Merge Sort engine.
-* **Live Filtering:** Instant search input (`Ctrl+K`) and category filter combo box.
-* **Right-Click Context Menu:**
-  * 📂 *Open Containing Folder* (reveals file location in Windows Explorer)
-  * 📋 *Copy Full Path* (copies absolute path to clipboard)
-  * 🔍 *Filter by this Category*
-
-### 3. Categories
-* **Folder-Style Taxonomy:** Clear mapping of file extensions to functional groups:
-  * `Documents` (`.pdf`, `.docx`, `.txt`, `.md`, `.rtf`)
-  * `Images` (`.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`)
-  * `Audio` (`.mp3`, `.wav`, `.flac`, `.aac`, `.m4a`)
-  * `Videos` (`.mp4`, `.mkv`, `.mov`, `.avi`, `.webm`)
-  * `Archives` (`.zip`, `.tar`, `.gz`, `.7z`, `.rar`)
-  * `Code` (`.cpp`, `.h`, `.py`, `.js`, `.ts`, `.html`, `.css`, `.json`)
-  * `Spreadsheets` (`.xlsx`, `.xls`, `.csv`)
-  * `Installers` (`.exe`, `.msi`, `.dmg`)
-* **Interactive Jump:** Double-clicking any category automatically switches to `All Files` filtered by that category.
-
-### 4. Duplicates
-* **Non-Destructive Safety Banner:** Highlights that duplicate files are identified via streaming 1 MiB chunked SHA-256 digests and are **never deleted automatically**.
-* **Tree View:** Groups identical files by content digest, displaying file sizes, redundant copy counts, and individual file paths.
-
-### 5. Organization Plan (Core Review Workflow)
-* **Plan Summary:** Displays total proposed moves and the number of auto-resolved collisions.
-* **Review & Filter Controls:** Filter moves by text search or status (`All Statuses`, `Ready`, `Collision Renamed`).
-* **Multi-Select Controls:** "Select All" and "Deselect All" quick toggles.
-* **Review Data Grid:**
-  * `Include` (Checkbox toggle)
-  * `File Name`
-  * `Current Location`
-  * `Proposed Destination`
-  * `Status` (Semantic badges: `Ready` in Forest Green, `Collision Renamed` in Warning Amber)
-* **Sticky Bottom Action Bar:** Live approved move counter (`X of Y moves approved`) with the primary "Apply Approved Moves" button.
-* **Safety Confirmation Modal:** Displays a summary dialog guaranteeing zero file overwriting before performing any file move.
-
-### 6. History & Journal
-* **Operation Audit Trail:** Chronological record populated from `.sorted_journal.json`.
-* **Atomic Rollback (Undo):** Reverses all operations from the latest batch in inverted chronological order.
-* **CSV Export:** One-click export of the complete audit log to `sorted_audit_trail.csv`.
-
----
-
-## ⚡ DAA Algorithms & Complexity
-
-SORTED was engineered as a reference implementation for **Design and Analysis of Algorithms (DAA)**. Every core operation is backed by formal complexity bounds:
-
-| Operation | DAA Algorithm | Time Complexity | Space Complexity | Practical Behaviour |
-| :--- | :--- | :--- | :--- | :--- |
-| **Recursive Scan** | Depth-First Traversal | $\mathcal{O}(V + E)$ | $\mathcal{O}(D)$ | $D$ = maximum directory depth. Cycle-safe with symlink filtering. |
-| **File Sorting** | Custom Merge Sort | $\Theta(n \log n)$ | $\mathcal{O}(n)$ | Stable Divide-and-Conquer sorting. Never degrades to $\mathcal{O}(n^2)$. |
-| **Duplicate Prefilter** | Hash-Bucket Size Index | $\mathcal{O}(n)$ | $\mathcal{O}(n)$ | Filters out $>80\%$ of files without disk I/O. |
-| **Duplicate Verification**| Streaming SHA-256 | $\mathcal{O}(B)$ | $\mathcal{O}(1)$ | 1 MiB chunked streaming. Constant memory footprint. |
-| **Organization Plan** | Greedy Rule Selection | $\mathcal{O}(n)$ | $\mathcal{O}(n)$ | Priority-ordered extension matching. |
-| **Collision Resolution** | In-Memory Path Hashing | $\mathcal{O}(1)$ amortized | $\mathcal{O}(k)$ | $k$ = reserved destinations. Zero collision overwrites. |
-| **Batch Rollback** | Inverted Journal Replay | $\mathcal{O}(m)$ | $\mathcal{O}(m)$ | $m$ = operations in batch. Exact state restoration. |
-
-### 1. Merge Sort ($\mathcal{O}(n \log n)$ Stable Divide-and-Conquer)
-```cpp
-// Divide step: find midpoint
-std::size_t mid = left + (right - left) / 2;
-mergeSortInternal(arr, temp, left, mid, comp);
-mergeSortInternal(arr, temp, mid + 1, right, comp);
-
-// Conquer step: stable linear merge
-std::size_t i = left, j = mid + 1, k = left;
-while (i <= mid && j <= right) {
-    if (comp(arr[i], arr[j])) temp[k++] = std::move(arr[i++]);
-    else                     temp[k++] = std::move(arr[j++]);
-}
-```
-* **Recurrence Relation:** $T(n) = 2T(n/2) + \Theta(n)$
-* **Master Theorem Case 2:** Yields optimal $\Theta(n \log n)$ time complexity across all input distributions (best, average, worst).
-* **Stability:** Preserves relative order of files with equal keys, essential when chaining filters.
-
-### 2. Two-Stage Duplicate Detection ($\mathcal{O}(n + H + B)$)
-Disk I/O is the primary bottleneck in duplicate detection. Calculating SHA-256 across all files is computationally wasteful. SORTED applies a **two-phase filter**:
-1. **Phase 1 (Size Bucketing - $\mathcal{O}(n)$):** Group files by file size. Files with unique sizes cannot be duplicates and are immediately excluded from hashing ($>80\%$ pruned in typical datasets).
-2. **Phase 2 (Streaming SHA-256 - $\mathcal{O}(H + B)$):** Only size-colliding groups ($H$ files) are streamed through SHA-256 in 1 MiB chunks ($B$ total bytes hashed), ensuring bounded $\mathcal{O}(1)$ memory consumption.
-
----
-
-## 📊 Empirical Benchmarks
-
-Tested on a Windows 11 AMD64 machine with an NVMe SSD across synthetic benchmarks generated with variable file sizes and a controlled 15% duplicate ratio (see [`docs/BENCHMARK_REPORT.md`](docs/BENCHMARK_REPORT.md)):
-
-| Files ($N$) | Traversal Scan | DAA Merge Sort | Duplicate Detection | Greedy Planner | Data Hashed |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **100 Files** | 5.08 ms | **0.13 ms** | 4.42 ms | 4.98 ms | 27.0 KB |
-| **500 Files** | 30.78 ms | **0.74 ms** | 41.36 ms | 21.97 ms | 13.6 MB |
-| **1,000 Files** | 90.19 ms | **2.04 ms** | 149.31 ms | 90.95 ms | 34.3 MB |
-
-> [!NOTE]
-> Even on a collection of **1,000 files**, Merge Sort executes in **2.04 ms**, proving extreme responsiveness suitable for smooth desktop interaction.
-
----
-
-## 🛡️ Safety Architecture & Zero-Overwrite Policy
-
-File loss during automated organization is unacceptable. SORTED enforces multiple programmatic safeguards:
-
-1. **In-Memory Destination Reservation:** The `OrganizationPlanner` maintains a hash set of all allocated target paths during plan generation. If `notes.txt` already exists or was previously claimed by another file, the planner automatically generates `notes (1).txt`, `notes (2).txt` without overwriting.
-2. **Pre-Move Filesystem Verification:** Before executing a rename, `FileOperationService` verifies that the destination path does not exist on disk.
-3. **Atomic Operations:** Renames execute via filesystem-level atomic link updates (`std::filesystem::rename` / `os.rename`).
-4. **Operation Journaling:** Every move is written to `.sorted_journal.json` with timestamp, source path, target path, file size, content hash, and batch ID.
-5. **Instant Rollback:** If an organization batch is undesirable, clicking **"Undo Last Batch"** reverses every move in reverse order, restoring the directory structure to its exact prior state.
-
----
-
-## 📂 Repository Structure
-
-```
-SORTED_Project_Docs/
-├── CMakeLists.txt                    # Modern CMake 3.21+ C++ build system
-├── desktop_app.py                    # Complete native Qt 6 desktop application
-├── run_gui.bat                       # One-click Windows GUI launcher
-├── run_cli.bat                       # One-click Windows CLI demonstration launcher
-├── run_cpp_test.bat                  # One-click Windows C++ test suite launcher
-├── test_core.exe                     # Compiled C++17 standalone verification binary
-│
-├── src/                              # C++17 Qt 6 Architecture
-│   ├── main.cpp                      # Application entrypoint
-│   ├── models/                       # Data structures
-│   │   ├── FileRecord.h              # File metadata & classification record
-│   │   ├── MoveOperation.h           # Move operation, collision, and status model
-│   │   └── ScanResult.h              # Scan summary, statistics, and duplicate groups
-│   ├── core/                         # DAA Algorithms & Core Services
-│   │   ├── MergeSort.h               # O(n log n) Divide-and-Conquer template sorter
-│   │   ├── FileScanner.h / .cpp      # Recursive directory scanner with cancel tokens
-│   │   ├── FileClassifier.h / .cpp   # Rule-based file taxonomy classifier
-│   │   ├── DuplicateDetector.h / .cpp# Size-prefiltered streaming SHA-256 detector
-│   │   └── OrganizationPlanner.h/.cpp# Collision-safe destination planner
-│   ├── operations/                   # Operational execution & safety
-│   │   ├── FileOperationService.h/.cpp# Non-destructive batch executor & rollback
-│   │   └── OperationJournal.h / .cpp # JSON audit logging (.sorted_journal.json)
-│   └── ui/                           # Apple x Notion Qt 6 Widget Components
-│       ├── Theme.h / Theme.cpp       # Central Cobalt Blue design system
-│       ├── MainWindow.h / .cpp       # Collapsible navigation shell
-│       ├── OverviewPage.h / .cpp     # Workspace metrics & category breakdown
-│       ├── FilesPage.h / .cpp        # 44px file table with Merge Sort & Ctrl+K
-│       ├── CategoriesPage.h / .cpp   # Folder-style taxonomy grid
-│       ├── DuplicatesPage.h / .cpp   # Non-destructive duplicate tree
-│       ├── OrganizePage.h / .cpp     # Review plan table & collision filters
-│       └── HistoryPage.h / .cpp      # Operation audit trail & undo actions
-│
-├── scripts/                          # Python CLI & Utilities
-│   ├── run_sorted_cli.py             # CLI runner for headless execution
-│   ├── run_benchmarks.py             # DAA benchmark harness (100, 500, 1000 files)
-│   └── generate_benchmark_dataset.py # Synthetic file tree generator
-│
-├── tests/                            # Test Suites
-│   ├── test_full_suite.py            # Comprehensive multi-phase test runner
-│   ├── test_standalone_core.cpp      # Standalone C++ verification suite
-│   ├── test_mergesort.cpp            # Merge Sort unit tests
-│   ├── test_classifier.cpp           # Classification rule unit tests
-│   ├── test_duplicates.cpp           # Duplicate detection unit tests
-│   ├── test_planner.cpp              # Organization planning & collision tests
-│   └── test_file_operations.cpp      # File execution & journaling tests
-│
-└── docs/                             # Engineering Specifications
-    ├── 00_PROJECT_BRIEF.md           # Project vision, goals & constraints
-    ├── 01_REQUIREMENTS_PRD.md        # Formal requirements specification
-    ├── 02_ARCHITECTURE.md            # Modular architecture specification
-    ├── 03_ALGORITHMS_DAA.md          # Formal algorithmic analysis
-    ├── 04_UI_UX_DESIGN.md            # Apple x Notion design manual
-    ├── 05_IMPLEMENTATION_AND_TESTING.md # Safety protocol & testing plan
-    └── BENCHMARK_REPORT.md           # Empirical benchmark report
+```text
+SORTED/
+├── CMakeLists.txt                    # Multi-platform CMake 3.21+ build configuration
+├── CMakePresets.json                 # Standardized CMake build & test presets
+├── README.md                         # Release, installation, and architecture guide
+├── LICENSE                           # MIT License
+├── CHANGELOG.md                      # Release changelog
+├── .gitignore                        # Release-ready ignore rules
+├── .editorconfig                     # Cross-platform editor formatting
+├── cmake/
+│   ├── Dependencies.cmake            # Qt 6 / Qt 5 discovery and link configurations
+│   └── Packaging.cmake               # macOS bundle & CPack release definitions
+├── src/                              # Consolidated C++17 Application Source
+│   ├── main.cpp                      # Native application entrypoint
+│   ├── core/                         # DAA algorithms & scanning engines
+│   │   ├── FileScanner.h / .cpp      # Root-only discovery & guardrails
+│   │   ├── FileClassifier.h / .cpp   # Semantic taxonomy classification
+│   │   ├── DuplicateDetector.h / .cpp# Streaming SHA-256 duplicate verification
+│   │   ├── OrganizationPlanner.h/.cpp# Collision-free greedy destination planner
+│   │   └── MergeSort.h               # Stable Divide-and-Conquer Merge Sort
+│   ├── models/                       # Domain data transfer objects
+│   │   ├── FileRecord.h
+│   │   ├── MoveOperation.h
+│   │   └── ScanResult.h
+│   ├── operations/                   # Operation journal and execution service
+│   │   ├── FileOperationService.h/.cpp
+│   │   └── OperationJournal.h/.cpp   # Thread-safe persistent JSON journal
+│   └── ui/                           # Qt 6 Widgets user interface
+│       ├── MainWindow.h / .cpp       # Main window frame & state machine
+│       ├── OverviewPage.h / .cpp     # Workspace metrics & telemetry
+│       ├── FilesPage.h / .cpp        # 44px file catalogue table
+│       ├── CategoriesPage.h / .cpp   # Folder taxonomy grid
+│       ├── DuplicatesPage.h / .cpp   # Duplicate content inspector
+│       ├── OrganizePage.h / .cpp     # Inspectable move review table
+│       ├── HistoryPage.h / .cpp      # Operation audit trail & instant undo
+│       ├── Theme.h / .cpp            # Apple monochrome design tokens
+│       └── glass/                    # Liquid Glass component system
+├── resources/                        # Bundled application icons & assets
+│   ├── icons/
+│   │   ├── SORTED.png                # 1024x1024 master icon
+│   │   ├── SORTED.icns               # Multi-resolution Apple icon bundle
+│   │   ├── SORTED.ico                # Multi-resolution Windows icon bundle
+│   │   └── SORTED.rc                 # Windows PE version and icon resource
+│   └── resources.qrc                 # Qt resource XML definition
+├── tests/                            # Automated verification test suites
+│   ├── CMakeLists.txt                # C++ test targets
+│   ├── cpp/                          # C++ algorithm & unit tests
+│   ├── python/                       # Full pipeline & UI regression tests
+│   └── fixtures/                     # Isolated test directory fixtures
+├── benchmarks/                       # Empirical DAA benchmarks & synthetic data
+├── docs/                             # Engineering specifications & design manuals
+├── packaging/                        # Packaging assets and specifications
+│   ├── macos/
+│   │   ├── Info.plist.in             # macOS bundle property list template
+│   │   ├── entitlements.plist        # Apple hardened runtime entitlements
+│   │   └── create_dmg.sh             # DMG creation script with macdeployqt
+│   └── windows/
+│       ├── installer.iss             # Inno Setup 64-bit installer script
+│       └── package_windows.ps1       # Automated windeployqt packaging script
+├── scripts/                          # Platform build & packaging helper scripts
+│   ├── build-macos.sh                # macOS native build runner
+│   ├── build-windows.ps1             # Windows build runner
+│   └── package-macos.sh              # macOS packaging runner
+└── .github/
+    └── workflows/
+        └── release.yml               # Multi-platform CI/CD release workflow
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🛠️ Building from Source
 
-### Option A: Run Native Desktop GUI (Recommended)
+### macOS (Apple Silicon / Intel)
 
-Double-click [`run_gui.bat`](run_gui.bat) or run from your terminal:
+Requirements: macOS 12.0+, Xcode Command Line Tools, CMake 3.21+, Qt 6.6+ (`brew install qt@6 ninja`).
+
+```bash
+# Using helper script
+chmod +x scripts/build-macos.sh scripts/package-macos.sh packaging/macos/create_dmg.sh
+./scripts/build-macos.sh build-macos Release arm64
+
+# Package DMG
+./scripts/package-macos.sh build-macos dist/macos arm64
+```
+
+Or using CMake directly:
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt@6)"
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
+### Windows 11 (64-bit)
+
+Requirements: Windows 10/11, CMake 3.21+, MinGW (g++ 13+) or MSVC 2022, Qt 6.6+.
 
 ```powershell
-python desktop_app.py
+# Build and run tests using helper script
+.\scripts\build-windows.ps1 -BuildDir build -Config Release
+
+# Build and assemble full installer (requires windeployqt and Inno Setup)
+.\scripts\build-windows.ps1 -BuildDir build -Config Release -Package
 ```
 
-*Requirements: Python 3.10+ with `PySide6` (`pip install PySide6`)*
+### Standalone C++ Algorithm Verification (No Qt SDK Required)
 
-### Option B: Run Headless CLI Engine
-
-Double-click [`run_cli.bat`](run_cli.bat) or run from your terminal:
-
+To verify the core DAA algorithms on a workstation without Qt:
 ```powershell
-# Run algorithm demonstration on test directory
-python scripts/run_sorted_cli.py SORTED_TEST
+.\run_cpp_test.bat
 ```
-
-### Option C: Run Compiled C++17 Core Verification Suite
-
-Double-click [`run_cpp_test.bat`](run_cpp_test.bat) or execute the standalone binary:
-
-```powershell
-.\test_core.exe
-```
-
 Output:
-```
+```text
 ============================================
   SORTED --- C++17 Core Verification Suite   
 ============================================
-[Test 1/4] Running DAA MergeSort verification... PASSED!
-[Test 2/4] Running FileClassifier rules verification... PASSED!
-[Test 3/4] Running OrganizationPlanner collision handling... PASSED!
-[Test 4/4] Running FileScanner recursive discovery... PASSED! Discovered 8 files recursively.
+[Test 1/5] Running DAA MergeSort verification... PASSED!
+[Test 2/5] Running FileClassifier rules verification... PASSED!
+[Test 3/5] Running OrganizationPlanner collision handling... PASSED!
+[Test 4/5] Running FileScanner root-only discovery... PASSED! Discovered 7 root files, preserved 3 protected folders.
+[Test 5/5] Running Guardrail 1 planner validation for nested files... PASSED! Nested file candidate was successfully rejected.
 ============================================
   ALL C++17 VERIFICATION TESTS PASSED!      
 ============================================
@@ -311,49 +213,42 @@ Output:
 
 ---
 
-## 🧪 Comprehensive Verification Suite
+## 🚀 Automated GitHub Actions Release Pipeline
 
-To run the complete automated test harness (validating C++ compilation, CLI engine, and headless Qt 6 GUI pipeline):
+The remote CI/CD workflow (`.github/workflows/release.yml`) builds, tests, and packages release binaries across macOS and Windows simultaneously:
 
-```powershell
-python tests/test_full_suite.py
-```
+* **Triggering a Release:**
+  * Push a version tag: `git tag v1.0.0 && git push origin v1.0.0`
+  * Or trigger manually from GitHub UI: **Actions** -> **SORTED Production Build & Multi-Platform Release** -> **Run workflow**.
 
-Output:
-```
-=================================================
-  SORTED — Full Verification & Acceptance Suite  
-=================================================
-[1/3] Running Compiled C++17 Core Verification Suite... => PASSED!
-[2/3] Running Python CLI Engine on SORTED_TEST...        => PASSED!
-[3/3] Running Headless PySide6 Desktop Pipeline...       => PASSED!
+* **Matrix of Jobs:**
+  1. **`build-macos-arm64` (`macos-14` runner):** Compiles native Apple Silicon `arm64` binary, runs verification tests, executes `macdeployqt`, packages `SORTED-1.0.0-macOS-arm64.dmg`, and uploads artifact.
+  2. **`build-macos-x86_64` (`macos-13` runner):** Compiles native Intel `x86_64` binary, runs tests, executes `macdeployqt`, packages `SORTED-1.0.0-macOS-x86_64.dmg`, and uploads artifact.
+  3. **`build-windows` (`windows-latest` runner):** Compiles 64-bit MSVC binary, runs tests, runs `windeployqt`, compiles Inno Setup installer `SORTED-1.0.0-windows-x64-Setup.exe` and portable ZIP.
+  4. **`publish-release`:** Collects all artifacts and publishes a unified GitHub Release.
 
-=================================================
-  ALL VERIFICATION TESTS COMPLETED WITH 0 ERRORS 
-=================================================
-```
+### Code Signing & Apple Notarization
+To enable official Apple Developer ID signing and Gatekeeper notarization in CI:
+* Set GitHub Secrets:
+  * `MACOS_CERTIFICATE_NAME`: Developer ID Application identity.
+  * `APPLE_ID`: Apple developer email.
+  * `APPLE_APP_SPECIFIC_PASSWORD`: App-specific password from appleid.apple.com.
+  * `APPLE_TEAM_ID`: 10-character Apple Developer Team ID.
 
----
-
-## 🛠️ Building C++17 Executable with CMake
-
-If you have Qt 6 development libraries installed on your machine:
-
-```powershell
-# Configure build
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-
-# Build executable
-cmake --build build --config Release
-
-# Run SORTED
-.\build\Release\SORTED.exe
-```
+When secrets are omitted, the workflow cleanly generates unsigned preview DMGs ready for testing and distribution.
 
 ---
 
-## 📄 License & Attribution
+## 🛡️ Safety Architecture & Root-Only Scope Policy
 
-Distributed under the **MIT License**. See `LICENSE` for details.
+1. **Root-Level Isolation:** Only direct child files of the selected workspace are processed. Existing subdirectories are strictly protected.
+2. **Preview-First Execution:** Files are only moved after the user inspects the proposed destination and clicks "Apply Approved Moves".
+3. **In-Memory Collision Reservation:** Colliding file names automatically receive deterministic numeric suffixes (`file (1).ext`) to ensure zero file loss.
+4. **Pre-Move Disk Verification:** The filesystem is revalidated immediately before each file is moved.
+5. **Atomic Reversible Operations:** Moves are performed via atomic filesystem operations and recorded in `.sorted_journal.json` for one-click rollback.
 
-Engineered with structured C++17 and Python Qt 6 to demonstrate that file management tools can be both mathematically sound and aesthetically delightful.
+---
+
+## 📄 License
+
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.

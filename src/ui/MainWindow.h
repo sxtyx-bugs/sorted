@@ -8,6 +8,7 @@
 #include <QProgressBar>
 #include <QThread>
 #include <QShortcut>
+#include <QSettings>
 #include <atomic>
 #include <memory>
 #include <filesystem>
@@ -28,6 +29,14 @@
 #include "DuplicatesPage.h"
 #include "OrganizePage.h"
 #include "HistoryPage.h"
+#include "glass/WindowBackdrop.h"
+#include "glass/GlassPanel.h"
+#include "glass/GlassSidebar.h"
+#include "glass/GlassToolbar.h"
+#include "glass/GlassButton.h"
+#include "glass/GlassSearchField.h"
+#include "glass/GlassNavigationItem.h"
+#include "glass/GlassDialog.h"
 
 namespace Ui {
 
@@ -80,6 +89,9 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
+protected:
+    void showEvent(QShowEvent* event) override;
+
 private slots:
     void onSelectFolderClicked();
     void onStartScanClicked();
@@ -109,7 +121,9 @@ private slots:
 private:
     void setupUi();
     void applyTheme();
-    void updateRootPathDisplay();
+    void loadSettings();
+    void saveSettings();
+    void updateTopToolbarFolder();
 
     fs::path m_selectedRoot;
     ScanResult m_lastScanResult;
@@ -128,24 +142,27 @@ private:
     QThread* m_execThread = nullptr;
     ExecutionWorker* m_execWorker = nullptr;
 
-    // UI Widgets
-    QWidget* m_sidebarWidget;
-    QLabel* m_lblLogo;
-    QLabel* m_lblDot;
-    QLabel* m_lblTagline;
-    QPushButton* m_btnCollapse;
-    QListWidget* m_navList;
-    QWidget* m_pathBox;
-    QLabel* m_lblCurrentPath;
-    QPushButton* m_btnSelectFolder;
-    QPushButton* m_btnTheme;
+    // Sidebar Widgets
+    Glass::GlassSidebar* m_sidebarWidget = nullptr;
+    QLabel* m_lblLogo = nullptr;
+    QLabel* m_lblDot = nullptr;
+    QLabel* m_lblTagline = nullptr;
+    Glass::GlassButton* m_btnCollapse = nullptr;
+    QListWidget* m_navList = nullptr;
+    Glass::GlassNavigationItem* m_navDelegate = nullptr;
+    Glass::GlassButton* m_btnTheme = nullptr;
 
-    QLabel* m_lblHeaderTitle;
-    QLabel* m_lblHeaderSub;
-    QPushButton* m_btnScan;
-    QPushButton* m_btnCancel;
-    QProgressBar* m_progressBar;
-    QLabel* m_lblStatus;
+    // Top Persistent Toolbar Widgets
+    Glass::GlassToolbar* m_topBar = nullptr;
+    QLabel* m_lblFolderIcon = nullptr;
+    QLabel* m_lblFolderName = nullptr;
+    QLabel* m_lblFolderPath = nullptr;
+    Glass::GlassButton* m_btnChangeFolder = nullptr;
+
+    QLabel* m_lblStatus = nullptr;
+    QProgressBar* m_progressBar = nullptr;
+    Glass::GlassButton* m_btnCancel = nullptr;
+    Glass::GlassButton* m_btnScan = nullptr;
 
     QShortcut* m_shortcutK = nullptr;
 

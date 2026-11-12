@@ -87,6 +87,7 @@ std::vector<FileRecord> FileScanner::scan(
     ErrorCallback onError
 ) {
     m_errors.clear();
+    m_protectedFolders.clear();
     std::vector<FileRecord> records;
 
     std::error_code ec;
@@ -102,8 +103,9 @@ std::vector<FileRecord> FileScanner::scan(
     addExcludedPath(rootDir / ".sorted");
 
     fs::directory_options options = fs::directory_options::skip_permission_denied;
-    auto iter = fs::recursive_directory_iterator(rootDir, options, ec);
-    auto endIter = fs::recursive_directory_iterator();
+    // NON-RECURSIVE directory iteration ONLY - Root-level files only!
+    auto iter = fs::directory_iterator(rootDir, options, ec);
+    auto endIter = fs::directory_iterator();
 
     if (ec) {
         std::string err = "Failed to open directory " + rootDir.string() + ": " + ec.message();
@@ -126,42 +128,34 @@ std::vector<FileRecord> FileScanner::scan(
         std::error_code statusEc;
         auto symStatus = fs::symlink_status(path, statusEc);
         if (fs::is_symlink(symStatus)) {
-            // Check symlink target
-            std::error_code symEc;
-            auto target = fs::read_symlink(path, symEc);
-            if (!symEc) {
-                fs::path absTarget = target.is_relative() ? (path.parent_path() / target) : target;
-                absTarget = fs::weakly_canonical(absTarget, symEc);
-                fs::path canRoot = fs::weakly_canonical(rootDir, symEc);
-                // If points outside root, do not traverse
-                auto [rootEnd, _] = std::mismatch(canRoot.begin(), canRoot.end(), absTarget.begin());
-                if (rootEnd != canRoot.end()) {
-                    iter.disable_recursion_pending();
-                    iter.increment(ec);
-                    continue;
-                }
-            }
+            iter.increment(ec);
+            continue;
         }
 
-        // Check exclusions on directories
+        // Check directories: NEVER enter them, register as protected
         if (fs::is_directory(entry.status())) {
-            if (isExcluded(path, rootDir)) {
-                iter.disable_recursion_pending();
-                iter.increment(ec);
-                continue;
+            if (!isExcluded(path, rootDir)) {
+                m_protectedFolders.push_back(path);
             }
-            if (!m_includeHidden && isHidden(path)) {
-                iter.disable_recursion_pending();
-                iter.increment(ec);
-                continue;
-            }
-        } else if (fs::is_regular_file(entry.status())) {
+            iter.increment(ec);
+            continue;
+        }
+
+        // Regular files directly in rootDir
+        if (fs::is_regular_file(entry.status())) {
             if (isExcluded(path, rootDir)) {
                 iter.increment(ec);
                 continue;
             }
 
             if (!m_includeHidden && isHidden(path)) {
+                iter.increment(ec);
+                continue;
+            }
+
+            // Safety assertion: file must be a direct child of rootDir
+            std::error_code canEc;
+            if (fs::weakly_canonical(path.parent_path(), canEc) != fs::weakly_canonical(rootDir, canEc)) {
                 iter.increment(ec);
                 continue;
             }

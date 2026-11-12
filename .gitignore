@@ -1,0 +1,89 @@
+# =============================================================================
+# SORTED — Git Ignore Rules
+# =============================================================================
+
+# Build & Output Directories
+build/
+dist/
+bin/
+out/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Compiled Binaries & Libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.obj
+*.o
+*.exp
+*.ilk
+*.pdb
+
+# Python Bytecode & Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+
+# IDE & Editor Configurations
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.suo
+*.user
+*.userosv
+*.sln.docstates
+
+# Tool & Extension Caches
+.kombai/
+
+# Local Operating System Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Local Dynamic Runtime Logs & Journals (Except Preserved Master Backup)
+*.log
+local_journal.json
+!config/backup/.sorted_journal.json.bak
+_backup_pre_migration/
+
+# macOS Bundles & Disk Images
+*.app/
+*.dmg
+*.pkg
+*.icns_gen/

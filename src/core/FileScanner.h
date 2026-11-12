@@ -32,7 +32,8 @@ public:
     bool getIncludeHiddenFiles() const { return m_includeHidden; }
 
     /**
-     * @brief Recursively scans rootDir and discovers regular files.
+     * @brief Scans rootDir for direct root-level regular files ONLY (non-recursive).
+     * Subdirectories are preserved and registered as protected folders.
      */
     std::vector<FileRecord> scan(
         const fs::path& rootDir,
@@ -41,6 +42,7 @@ public:
         ErrorCallback onError = nullptr
     );
 
+    const std::vector<fs::path>& getProtectedFolders() const { return m_protectedFolders; }
     const std::vector<std::string>& getErrors() const { return m_errors; }
 
 private:
@@ -50,6 +52,7 @@ private:
     std::set<std::string> m_excludedFolderNames;
     std::set<fs::path> m_excludedPaths;
     bool m_includeHidden = false;
+    std::vector<fs::path> m_protectedFolders;
     std::vector<std::string> m_errors;
 };
 

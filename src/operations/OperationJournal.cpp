@@ -5,12 +5,27 @@
 #include <QSaveFile>
 #include <QFile>
 #include <QDateTime>
+#include <QStandardPaths>
 #include <system_error>
 
 namespace Operations {
 
 OperationJournal::OperationJournal() {
-    m_journalFilePath = fs::current_path() / ".sorted_journal.json";
+    QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (!appData.isEmpty()) {
+        fs::path appDataPath = fs::u8path(appData.toUtf8().constData());
+        m_journalFilePath = appDataPath / "sorted_journal.json";
+
+        // Backward-compatibility: Check if .sorted_journal.json exists in working dir
+        // to preserve existing history during upgrade
+        fs::path localLegacy = fs::current_path() / ".sorted_journal.json";
+        std::error_code ec;
+        if (!fs::exists(m_journalFilePath, ec) && fs::exists(localLegacy, ec)) {
+            m_journalFilePath = localLegacy;
+        }
+    } else {
+        m_journalFilePath = fs::current_path() / ".sorted_journal.json";
+    }
 }
 
 OperationJournal::OperationJournal(const fs::path& journalFilePath)
