@@ -16,7 +16,7 @@ OperationJournal::OperationJournal() {
     if (appData.isEmpty()) {
         appData = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
     }
-    fs::path appDataPath = PathUtils::utf8ToPath(appData.toStdString());
+    fs::path appDataPath = Core::PathUtils::utf8ToPath(appData.toStdString());
     m_journalFilePath = appDataPath / "sorted_journal.json";
 
     std::error_code ec;
