@@ -122,12 +122,12 @@ void ExecutionWorker::run() {
     } catch (const std::exception& e) {
         Operations::ExecutionSummary failedSummary;
         failedSummary.failed = m_moves.size();
-        failedSummary.errors.push_back(std::string("Execution failed: ") + e.what());
+        failedSummary.failureMessages.push_back(std::string("Execution failed: ") + e.what());
         emit finished(failedSummary, m_moves);
     } catch (...) {
         Operations::ExecutionSummary failedSummary;
         failedSummary.failed = m_moves.size();
-        failedSummary.errors.push_back("Execution failed due to an unknown exception.");
+        failedSummary.failureMessages.push_back("Execution failed due to an unknown exception.");
         emit finished(failedSummary, m_moves);
     }
 }
@@ -137,8 +137,7 @@ void ExecutionWorker::run() {
 // -------------------------------------------------------------
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), m_planner(m_classifier), m_opService(&m_journal) {
-    qRegisterMetaType<Ui::ScanResult>("ScanResult");
-    qRegisterMetaType<Ui::ScanResult>("Ui::ScanResult");
+    qRegisterMetaType<ScanResult>("ScanResult");
     qRegisterMetaType<Operations::ExecutionSummary>("Operations::ExecutionSummary");
     qRegisterMetaType<std::vector<MoveOperation>>("std::vector<MoveOperation>");
 

@@ -20,8 +20,7 @@ int main(int argc, char* argv[]) {
     QApplication::setOrganizationDomain("satydev.com");
 
     // Register cross-thread queued metatypes
-    qRegisterMetaType<Ui::ScanResult>("ScanResult");
-    qRegisterMetaType<Ui::ScanResult>("Ui::ScanResult");
+    qRegisterMetaType<ScanResult>("ScanResult");
     qRegisterMetaType<Operations::ExecutionSummary>("Operations::ExecutionSummary");
     qRegisterMetaType<std::vector<MoveOperation>>("std::vector<MoveOperation>");
 
