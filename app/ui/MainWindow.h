@@ -9,6 +9,7 @@
 #include <QThread>
 #include <QShortcut>
 #include <QSettings>
+#include <QMetaType>
 #include <atomic>
 #include <memory>
 #include <filesystem>
@@ -176,3 +177,5 @@ private:
 };
 
 } // namespace Ui
+
+Q_DECLARE_METATYPE(ScanResult)

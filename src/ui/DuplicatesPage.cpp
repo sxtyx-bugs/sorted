@@ -19,6 +19,7 @@ QString formatBytes(std::uintmax_t bytes) {
 
 DuplicatesPage::DuplicatesPage(QWidget* parent)
     : QWidget(parent) {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
     applyTheme();
 }
@@ -50,6 +51,7 @@ void DuplicatesPage::setupUi() {
 
     // Tree Widget
     m_treeWidget = new QTreeWidget(this);
+    m_treeWidget->setFrameShape(QFrame::NoFrame);
     m_treeWidget->setHeaderLabels({"Item / Group", "Size", "SHA-256 Digest", "Path"});
     m_treeWidget->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_treeWidget->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
@@ -62,6 +64,7 @@ void DuplicatesPage::setupUi() {
 
 void DuplicatesPage::applyTheme() {
     ColorTheme theme = Theme::currentTheme;
+    setStyleSheet(QString("DuplicatesPage { background-color: %1; }").arg(Theme::getCanvas()));
     m_treeWidget->setStyleSheet(Theme::getTreeStyleSheet(theme));
     m_noticeBanner->setStyleSheet(Theme::getCardStyleSheet(theme));
     m_lblNotice->setStyleSheet(QString("font-size: 13px; font-weight: 500; color: %1;").arg(Theme::getTextPrimary()));

@@ -1,10 +1,14 @@
 #include "FileOperationService.h"
 #include "../core/DuplicateDetector.h"
+#include "../core/PathUtils.h"
 #include <chrono>
 #include <random>
 #include <system_error>
 
 namespace Operations {
+
+using Core::PathUtils::pathToUtf8;
+using Core::PathUtils::weaklyCanonicalSafe;
 
 namespace {
 
@@ -28,12 +32,12 @@ bool FileOperationService::performCrossVolumeMove(
 
     // 1. Generate unique temporary path in destination directory
     fs::path tempPath = destination.parent_path() /
-        (destination.filename().string() + ".tmp." + generateRandomSuffix());
+        Core::PathUtils::utf8ToPath(pathToUtf8(destination.filename()) + ".tmp." + generateRandomSuffix());
 
     // Ensure temporary path doesn't already exist
     while (fs::exists(tempPath, ec)) {
         tempPath = destination.parent_path() /
-            (destination.filename().string() + ".tmp." + generateRandomSuffix());
+            Core::PathUtils::utf8ToPath(pathToUtf8(destination.filename()) + ".tmp." + generateRandomSuffix());
     }
 
     // 2. Copy source to temp path
@@ -104,32 +108,32 @@ bool FileOperationService::safeMoveOrCopy(
 
     // Check source exists
     if (!fs::exists(source, ec) || !fs::is_regular_file(source, ec)) {
-        errorMsg = "Source file does not exist or is not a regular file: " + source.string();
+        errorMsg = "Source file does not exist or is not a regular file: " + pathToUtf8(source);
         return false;
     }
 
     // Guardrail 2: Reject nested source files if workspace root is configured
     if (!m_workspaceRoot.empty()) {
-        fs::path normSrcParent = fs::weakly_canonical(source.parent_path(), ec);
-        fs::path normRoot = fs::weakly_canonical(m_workspaceRoot, ec);
+        fs::path normSrcParent = weaklyCanonicalSafe(source.parent_path());
+        fs::path normRoot = weaklyCanonicalSafe(m_workspaceRoot);
         if (normSrcParent != normRoot) {
-            errorMsg = "Security rejection: Source file is inside a protected subfolder. Only direct root-level files can be moved: " + source.string();
+            errorMsg = "Security rejection: Source file is inside a protected subfolder. Only direct root-level files can be moved: " + pathToUtf8(source);
             return false;
         }
 
         // Guardrail 3: Output directory isolation (destination must be within <workspaceRoot>/Sorted)
         fs::path expectedSorted = normRoot / "Sorted";
-        fs::path normDest = fs::weakly_canonical(destination, ec);
+        fs::path normDest = weaklyCanonicalSafe(destination);
         auto [rootEnd, _] = std::mismatch(expectedSorted.begin(), expectedSorted.end(), normDest.begin());
         if (rootEnd != expectedSorted.end()) {
-            errorMsg = "Security rejection: Destination must be inside the Sorted output directory: " + destination.string();
+            errorMsg = "Security rejection: Destination must be inside the Sorted output directory: " + pathToUtf8(destination);
             return false;
         }
     }
 
     // Check destination does NOT exist
     if (fs::exists(destination, ec)) {
-        errorMsg = "Destination file already exists; refused to overwrite: " + destination.string();
+        errorMsg = "Destination file already exists; refused to overwrite: " + pathToUtf8(destination);
         return false;
     }
 
@@ -198,7 +202,7 @@ ExecutionSummary FileOperationService::executeBatch(
                 summary.succeeded++;
             } else {
                 summary.failed++;
-                summary.failureMessages.push_back(op.source.filename().string() + ": " + op.errorMessage);
+                summary.failureMessages.push_back(pathToUtf8(op.source.filename()) + ": " + op.errorMessage);
             }
         }
 
@@ -226,13 +230,13 @@ bool FileOperationService::undoMove(MoveOperation& op) {
 
     // Check that moved file still exists at its destination
     if (!fs::exists(op.destination, ec) || !fs::is_regular_file(op.destination, ec)) {
-        op.errorMessage = "Cannot undo: destination file is missing: " + op.destination.string();
+        op.errorMessage = "Cannot undo: destination file is missing: " + pathToUtf8(op.destination);
         return false;
     }
 
     // Check that original source path is unoccupied
     if (fs::exists(op.source, ec)) {
-        op.errorMessage = "Cannot undo: original path is occupied; refusal to overwrite: " + op.source.string();
+        op.errorMessage = "Cannot undo: original path is occupied; refusal to overwrite: " + pathToUtf8(op.source);
         return false;
     }
 

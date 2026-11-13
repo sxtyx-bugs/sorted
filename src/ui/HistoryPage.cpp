@@ -30,6 +30,7 @@ HistoryPage::HistoryPage(Operations::OperationJournal* journal,
                          Operations::FileOperationService* opService,
                          QWidget* parent)
     : QWidget(parent), m_journal(journal), m_opService(opService) {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
     applyTheme();
 }
@@ -47,16 +48,19 @@ void HistoryPage::setupUi() {
 
     m_btnUndo = new QPushButton("↺  Undo Last Batch", this);
     m_btnUndo->setObjectName("btnSubtle");
+    m_btnUndo->setFixedHeight(36);
     connect(m_btnUndo, &QPushButton::clicked, this, &HistoryPage::onUndoSelectedClicked);
     headerLayout->addWidget(m_btnUndo);
 
     m_btnExportCsv = new QPushButton("📥  Export CSV", this);
     m_btnExportCsv->setObjectName("btnSubtle");
+    m_btnExportCsv->setFixedHeight(36);
     connect(m_btnExportCsv, &QPushButton::clicked, this, &HistoryPage::onExportCsvClicked);
     headerLayout->addWidget(m_btnExportCsv);
 
     m_btnRefresh = new QPushButton("Refresh", this);
     m_btnRefresh->setObjectName("btnSubtle");
+    m_btnRefresh->setFixedHeight(36);
     connect(m_btnRefresh, &QPushButton::clicked, this, &HistoryPage::onRefreshClicked);
     headerLayout->addWidget(m_btnRefresh);
 
@@ -64,6 +68,7 @@ void HistoryPage::setupUi() {
 
     // 44px Row Height Audit Table
     m_tableWidget = new QTableWidget(this);
+    m_tableWidget->setFrameShape(QFrame::NoFrame);
     m_tableWidget->setColumnCount(4);
     m_tableWidget->setHorizontalHeaderLabels({"Timestamp", "Source Path", "Destination Path", "Status"});
     m_tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
@@ -79,6 +84,7 @@ void HistoryPage::setupUi() {
 
 void HistoryPage::applyTheme() {
     ColorTheme theme = Theme::currentTheme;
+    setStyleSheet(QString("HistoryPage { background-color: %1; }").arg(Theme::getCanvas()));
     m_tableWidget->setStyleSheet(Theme::getTableStyleSheet(theme));
     m_lblTitle->setStyleSheet(QString("font-size: 16px; font-weight: 600; color: %1;").arg(Theme::getTextPrimary()));
 

@@ -58,6 +58,10 @@ private:
     QPushButton* m_btnQuickPlan = nullptr;
     QTableWidget* m_tableCategories = nullptr;
 
+    std::vector<QLabel*> m_metricTitleLabels;
+    std::vector<QLabel*> m_metricValueLabels;
+    std::vector<QLabel*> m_metricSubLabels;
+
     ScanResult m_lastResult;
     bool m_hasScannedData = false;
 };

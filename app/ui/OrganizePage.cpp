@@ -6,6 +6,7 @@ namespace Ui {
 
 OrganizePage::OrganizePage(QWidget* parent)
     : QWidget(parent) {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
     applyTheme();
 }
@@ -21,22 +22,26 @@ void OrganizePage::setupUi() {
 
     m_searchEdit = new QLineEdit(this);
     m_searchEdit->setPlaceholderText("Filter proposed moves...");
+    m_searchEdit->setFixedHeight(36);
     connect(m_searchEdit, &QLineEdit::textChanged, this, &OrganizePage::onSearchChanged);
     ctrlBar->addWidget(m_searchEdit, 2);
 
     m_statusCombo = new QComboBox(this);
     m_statusCombo->addItems({"All Statuses", "Ready", "Collision Renamed"});
+    m_statusCombo->setFixedHeight(36);
     connect(m_statusCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &OrganizePage::onStatusFilterChanged);
     ctrlBar->addWidget(m_statusCombo, 1);
 
     m_btnSelectAll = new QPushButton("Select All", this);
     m_btnSelectAll->setObjectName("btnSubtle");
+    m_btnSelectAll->setFixedHeight(36);
     connect(m_btnSelectAll, &QPushButton::clicked, this, &OrganizePage::onSelectAllClicked);
     ctrlBar->addWidget(m_btnSelectAll);
 
     m_btnDeselectAll = new QPushButton("Deselect All", this);
     m_btnDeselectAll->setObjectName("btnSubtle");
+    m_btnDeselectAll->setFixedHeight(36);
     connect(m_btnDeselectAll, &QPushButton::clicked, this, &OrganizePage::onDeselectAllClicked);
     ctrlBar->addWidget(m_btnDeselectAll);
 
@@ -44,11 +49,13 @@ void OrganizePage::setupUi() {
 
     // Plan summary heading
     m_lblPlanSummary = new QLabel("Plan ready. 0 files.", this);
+    m_lblPlanSummary->setFixedHeight(22);
     m_lblPlanSummary->setStyleSheet("font-size: 13px; font-weight: 500;");
     mainLayout->addWidget(m_lblPlanSummary);
 
     // 44px Row Height Organization Plan Table
     m_tableWidget = new QTableWidget(this);
+    m_tableWidget->setFrameShape(QFrame::NoFrame);
     m_tableWidget->setColumnCount(5);
     m_tableWidget->setHorizontalHeaderLabels({"Include", "File Name", "Current Location", "Proposed Destination", "Status"});
     m_tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
@@ -85,6 +92,7 @@ void OrganizePage::setupUi() {
 
 void OrganizePage::applyTheme() {
     ColorTheme theme = Theme::currentTheme;
+    setStyleSheet(QString("OrganizePage { background-color: %1; }").arg(Theme::getCanvas()));
     m_tableWidget->setStyleSheet(Theme::getTableStyleSheet(theme));
     m_bottomActionBar->setStyleSheet(Theme::getCardStyleSheet(theme));
 
@@ -147,7 +155,7 @@ void OrganizePage::applyFilters() {
         if (stIdx == 2 && !op.collisionResolved) continue;
 
         if (!q.isEmpty()) {
-            QString name = QString::fromStdString(op.source.filename().string()).toLower();
+            QString name = QString::fromStdWString(op.source.filename().wstring()).toLower();
             QString dest = QString::fromStdWString(op.destination.wstring()).toLower();
             if (!name.contains(q) && !dest.contains(q)) continue;
         }
@@ -173,11 +181,11 @@ void OrganizePage::renderTable() {
         m_tableWidget->insertRow(r);
 
         auto checkItem = new QTableWidgetItem();
-        checkItem->setCheckState(op.isApproved ? Qt::Checked : Qt::Unchecked);
+        checkItem->setCheckState(op.included ? Qt::Checked : Qt::Unchecked);
         checkItem->setData(Qt::UserRole, static_cast<qlonglong>(planIdx));
         m_tableWidget->setItem(r, 0, checkItem);
 
-        auto itemName = new QTableWidgetItem(QString::fromStdString(op.source.filename().string()));
+        auto itemName = new QTableWidgetItem(QString::fromStdWString(op.source.filename().wstring()));
         itemName->setForeground(QColor(textPri));
         m_tableWidget->setItem(r, 1, itemName);
 
@@ -206,7 +214,7 @@ void OrganizePage::renderTable() {
 void OrganizePage::onSelectAllClicked() {
     m_tableWidget->blockSignals(true);
     for (std::size_t planIdx : m_filteredIndices) {
-        m_plan[planIdx].isApproved = true;
+        m_plan[planIdx].included = true;
     }
     for (int r = 0; r < m_tableWidget->rowCount(); ++r) {
         if (auto it = m_tableWidget->item(r, 0)) {
@@ -220,7 +228,7 @@ void OrganizePage::onSelectAllClicked() {
 void OrganizePage::onDeselectAllClicked() {
     m_tableWidget->blockSignals(true);
     for (std::size_t planIdx : m_filteredIndices) {
-        m_plan[planIdx].isApproved = false;
+        m_plan[planIdx].included = false;
     }
     for (int r = 0; r < m_tableWidget->rowCount(); ++r) {
         if (auto it = m_tableWidget->item(r, 0)) {
@@ -235,7 +243,7 @@ void OrganizePage::onItemChanged(QTableWidgetItem* item) {
     if (item && item->column() == 0) {
         std::size_t planIdx = static_cast<std::size_t>(item->data(Qt::UserRole).toLongLong());
         if (planIdx < m_plan.size()) {
-            m_plan[planIdx].isApproved = (item->checkState() == Qt::Checked);
+            m_plan[planIdx].included = (item->checkState() == Qt::Checked);
         }
         updateSummary();
     }
@@ -244,7 +252,7 @@ void OrganizePage::onItemChanged(QTableWidgetItem* item) {
 void OrganizePage::updateSummary() {
     std::size_t approved = 0;
     for (const auto& op : m_plan) {
-        if (op.isApproved) approved++;
+        if (op.included) approved++;
     }
     m_lblApprovedCount->setText(QString("%1 of %2 moves approved").arg(approved).arg(m_plan.size()));
 }
@@ -252,7 +260,7 @@ void OrganizePage::updateSummary() {
 void OrganizePage::onApplyClicked() {
     std::vector<MoveOperation> approvedMoves;
     for (const auto& op : m_plan) {
-        if (op.isApproved) {
+        if (op.included) {
             approvedMoves.push_back(op);
         }
     }

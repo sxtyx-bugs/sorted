@@ -243,6 +243,7 @@ void MainWindow::setupUi() {
     // =========================================================
     auto contentArea = new QWidget(this);
     contentArea->setObjectName("contentArea");
+    contentArea->setAttribute(Qt::WA_StyledBackground, true);
     auto contentLayout = new QVBoxLayout(contentArea);
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(0);
@@ -312,12 +313,14 @@ void MainWindow::setupUi() {
 
     // Stacked Pages
     m_stackWidget = new QStackedWidget(contentArea);
-    m_pageOverview = new OverviewPage(this);
-    m_pageFiles = new FilesPage(this);
-    m_pageCategories = new CategoriesPage(this);
-    m_pageDuplicates = new DuplicatesPage(this);
-    m_pageOrganize = new OrganizePage(this);
-    m_pageHistory = new HistoryPage(&m_journal, &m_opService, this);
+    m_stackWidget->setObjectName("stackWidget");
+    m_stackWidget->setAttribute(Qt::WA_StyledBackground, true);
+    m_pageOverview = new OverviewPage(m_stackWidget);
+    m_pageFiles = new FilesPage(m_stackWidget);
+    m_pageCategories = new CategoriesPage(m_stackWidget);
+    m_pageDuplicates = new DuplicatesPage(m_stackWidget);
+    m_pageOrganize = new OrganizePage(m_stackWidget);
+    m_pageHistory = new HistoryPage(&m_journal, &m_opService, m_stackWidget);
 
     m_stackWidget->addWidget(m_pageOverview);   // index 0
     m_stackWidget->addWidget(m_pageFiles);      // index 1
@@ -464,6 +467,10 @@ void MainWindow::applyTheme() {
 
     m_sidebarWidget->setStyleSheet(Theme::getSidebarStyleSheet(theme));
 
+    if (auto contentArea = findChild<QWidget*>("contentArea")) {
+        contentArea->setStyleSheet(QString("QWidget#contentArea { background-color: %1; }").arg(Theme::getCanvas()));
+    }
+
     QString textPri = Theme::getTextPrimary();
     QString textSec = Theme::getTextSecondary();
     QString textMuted = Theme::getTextMuted();
@@ -511,6 +518,9 @@ void MainWindow::onSelectFolderClicked() {
 
 void MainWindow::onNavigationChanged(int index) {
     m_stackWidget->setCurrentIndex(index);
+    if (auto current = m_stackWidget->currentWidget()) {
+        current->update();
+    }
 }
 
 void MainWindow::onCategoryFilterRequested(const QString& category) {
@@ -523,7 +533,12 @@ void MainWindow::onReviewPlanRequested() {
 }
 
 void MainWindow::onStartScanClicked() {
-    if (m_selectedRoot.empty() || !fs::exists(m_selectedRoot)) {
+    if (m_selectedRoot.empty()) {
+        onSelectFolderClicked();
+        return;
+    }
+    std::error_code ec;
+    if (!fs::exists(m_selectedRoot, ec) || !fs::is_directory(m_selectedRoot, ec)) {
         onSelectFolderClicked();
         return;
     }
@@ -574,22 +589,28 @@ void MainWindow::onHashProgress(int processed, int total, const QString& current
 }
 
 void MainWindow::onScanFinished(const ScanResult& result) {
-    m_btnScan->setEnabled(true);
-    m_btnCancel->setVisible(false);
-    m_progressBar->setVisible(false);
-    m_lblStatus->setText(QString("Scan complete: %1 files in %2 ms")
-        .arg(result.files.size())
-        .arg(result.stats.scanDurationMs.count()));
+    try {
+        m_btnScan->setEnabled(true);
+        m_btnCancel->setVisible(false);
+        m_progressBar->setVisible(false);
+        m_lblStatus->setText(QString("Scan complete: %1 files in %2 ms")
+            .arg(result.files.size())
+            .arg(result.stats.scanDurationMs.count()));
 
-    m_lastScanResult = result;
+        m_lastScanResult = result;
 
-    m_pageOverview->updateStats(result);
-    m_pageFiles->setFiles(result.files);
-    m_pageCategories->setFiles(result.files);
-    m_pageDuplicates->setDuplicateGroups(result.duplicateGroups);
+        m_pageOverview->updateStats(result);
+        m_pageFiles->setFiles(result.files);
+        m_pageCategories->setFiles(result.files);
+        m_pageDuplicates->setDuplicateGroups(result.duplicateGroups);
 
-    m_currentPlan = m_planner.generatePlan(m_selectedRoot, result.files);
-    m_pageOrganize->setPlan(m_selectedRoot, m_currentPlan);
+        m_currentPlan = m_planner.generatePlan(m_selectedRoot, result.files);
+        m_pageOrganize->setPlan(m_selectedRoot, m_currentPlan);
+    } catch (const std::exception& e) {
+        onScanError(QString("Failed to finalize scan results: %1").arg(e.what()));
+    } catch (...) {
+        onScanError("Failed to finalize scan results due to an unexpected system error.");
+    }
 }
 
 void MainWindow::onScanError(const QString& errorMessage) {

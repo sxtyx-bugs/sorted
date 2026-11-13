@@ -19,6 +19,7 @@ QString formatBytes(std::uintmax_t bytes) {
 
 DuplicatesPage::DuplicatesPage(QWidget* parent)
     : QWidget(parent) {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
     applyTheme();
 }
@@ -50,6 +51,7 @@ void DuplicatesPage::setupUi() {
 
     // Tree Widget
     m_treeWidget = new QTreeWidget(this);
+    m_treeWidget->setFrameShape(QFrame::NoFrame);
     m_treeWidget->setHeaderLabels({"Item / Group", "Size", "SHA-256 Digest", "Path"});
     m_treeWidget->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_treeWidget->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
@@ -62,6 +64,7 @@ void DuplicatesPage::setupUi() {
 
 void DuplicatesPage::applyTheme() {
     ColorTheme theme = Theme::currentTheme;
+    setStyleSheet(QString("DuplicatesPage { background-color: %1; }").arg(Theme::getCanvas()));
     m_treeWidget->setStyleSheet(Theme::getTreeStyleSheet(theme));
     m_noticeBanner->setStyleSheet(Theme::getCardStyleSheet(theme));
     m_lblNotice->setStyleSheet(QString("font-size: 13px; font-weight: 500; color: %1;").arg(Theme::getTextPrimary()));
@@ -74,13 +77,14 @@ void DuplicatesPage::applyTheme() {
         auto top = m_treeWidget->topLevelItem(i);
         top->setForeground(0, QBrush(QColor(textPri)));
         top->setForeground(1, QBrush(QColor(textSec)));
-        top->setForeground(2, QBrush(QColor(Theme::AccentBlue)));
+        top->setForeground(2, QBrush(QColor(textSec)));
         top->setForeground(3, QBrush(QColor(Theme::StatusWarning)));
 
         for (int c = 0; c < top->childCount(); ++c) {
             auto child = top->child(c);
             child->setForeground(0, QBrush(QColor(textPri)));
             child->setForeground(1, QBrush(QColor(textSec)));
+            child->setForeground(2, QBrush(QColor(textSec)));
             child->setForeground(3, QBrush(QColor(textSec)));
         }
     }
@@ -100,16 +104,17 @@ void DuplicatesPage::setDuplicateGroups(const std::vector<DuplicateGroup>& group
 
     for (const auto& group : groups) {
         auto groupItem = new QTreeWidgetItem(m_treeWidget);
-        groupItem->setText(0, QString("Group #%1 (%2 copies)").arg(group.groupId).arg(group.files.size()));
-        groupItem->setText(1, formatBytes(group.fileSize));
+        groupItem->setText(0, QString("Group #%1 (%2 copies)").arg(group.id).arg(group.files.size()));
+        groupItem->setText(1, formatBytes(group.size));
 
-        QString truncatedHash = QString::fromStdString(group.sha256Hash.substr(0, 16)) + "...";
+        QString truncatedHash = QString::fromStdString(
+            group.sha256.length() > 16 ? group.sha256.substr(0, 16) + "..." : group.sha256);
         groupItem->setText(2, truncatedHash);
-        groupItem->setText(3, QString("%1 redundant duplicate copies").arg(group.files.size() - 1));
+        groupItem->setText(3, QString("%1 redundant duplicate copies").arg(group.files.size() > 1 ? group.files.size() - 1 : 0));
 
         groupItem->setForeground(0, QBrush(QColor(textPri)));
         groupItem->setForeground(1, QBrush(QColor(textSec)));
-        groupItem->setForeground(2, QBrush(QColor(Theme::AccentBlue)));
+        groupItem->setForeground(2, QBrush(QColor(textSec)));
         groupItem->setForeground(3, QBrush(QColor(Theme::StatusWarning)));
         groupItem->setExpanded(true);
 
@@ -117,10 +122,12 @@ void DuplicatesPage::setDuplicateGroups(const std::vector<DuplicateGroup>& group
             auto fileItem = new QTreeWidgetItem(groupItem);
             fileItem->setText(0, QString::fromStdString(file.name));
             fileItem->setText(1, formatBytes(file.size));
+            fileItem->setText(2, "");
             fileItem->setText(3, QString::fromStdWString(file.path.wstring()));
 
             fileItem->setForeground(0, QBrush(QColor(textPri)));
             fileItem->setForeground(1, QBrush(QColor(textSec)));
+            fileItem->setForeground(2, QBrush(QColor(textSec)));
             fileItem->setForeground(3, QBrush(QColor(textSec)));
         }
     }

@@ -1,4 +1,5 @@
 #include "OrganizationPlanner.h"
+#include "PathUtils.h"
 #include <algorithm>
 #include <cctype>
 #include <system_error>
@@ -6,14 +7,6 @@
 namespace Core {
 
 namespace {
-
-std::string toLowerString(const std::string& str) {
-    std::string s = str;
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
-    return s;
-}
 
 std::string toUpperString(const std::string& str) {
     std::string s = str;
@@ -24,12 +17,7 @@ std::string toUpperString(const std::string& str) {
 }
 
 std::string pathKey(const fs::path& p) {
-    // Windows paths are case-insensitive
-#ifdef _WIN32
-    return toLowerString(fs::weakly_canonical(p).lexically_normal().string());
-#else
-    return fs::weakly_canonical(p).lexically_normal().string();
-#endif
+    return PathUtils::pathNormalizedKey(p);
 }
 
 } // namespace
@@ -73,13 +61,13 @@ fs::path OrganizationPlanner::resolveCollision(
     }
 
     fs::path dir = targetPath.parent_path();
-    std::string stem = targetPath.stem().string();
-    std::string ext = targetPath.extension().string();
+    std::string stem = PathUtils::pathToUtf8(targetPath.stem());
+    std::string ext = PathUtils::pathToUtf8(targetPath.extension());
 
     int counter = 1;
     while (true) {
         std::string newFileName = stem + " (" + std::to_string(counter) + ")" + ext;
-        fs::path candidate = dir / newFileName;
+        fs::path candidate = dir / PathUtils::utf8ToPath(newFileName);
         std::string candKey = pathKey(candidate);
 
         ec.clear();

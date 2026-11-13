@@ -5,10 +5,20 @@ namespace Ui {
 
 ColorTheme Theme::currentTheme = ColorTheme::Light;
 
-// --- Typography: SF Pro with Windows & Cross-Platform Fallback ---
-const QString Theme::FontFamilyDisplay = "'SF Pro Display', 'SF Pro Text', 'SF Pro', 'Segoe UI Variable Display', 'Segoe UI Variable Text', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
-const QString Theme::FontFamilyText    = "'SF Pro Text', 'SF Pro Display', 'SF Pro', 'Segoe UI Variable Text', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
-const QString Theme::FontFamilyMono    = "'SF Mono', 'Cascadia Code', 'Consolas', 'Courier New', monospace";
+// --- Typography: Native OS First with Apple & Windows Cross-Platform Fallback ---
+#if defined(Q_OS_WIN) || defined(_WIN32)
+const QString Theme::FontFamilyDisplay = "'Segoe UI Variable Display', 'Segoe UI Variable Text', 'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
+const QString Theme::FontFamilyText    = "'Segoe UI Variable Text', 'Segoe UI', 'SF Pro Text', -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
+const QString Theme::FontFamilyMono    = "'Cascadia Code', 'Consolas', 'SF Mono', monospace";
+#elif defined(Q_OS_MAC) || defined(__APPLE__)
+const QString Theme::FontFamilyDisplay = "'SF Pro Display', 'SF Pro Text', 'SF Pro', -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
+const QString Theme::FontFamilyText    = "'SF Pro Text', 'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
+const QString Theme::FontFamilyMono    = "'SF Mono', 'Menlo', 'Courier New', monospace";
+#else
+const QString Theme::FontFamilyDisplay = "system-ui, -apple-system, sans-serif";
+const QString Theme::FontFamilyText    = "system-ui, -apple-system, sans-serif";
+const QString Theme::FontFamilyMono    = "monospace";
+#endif
 
 const QString Theme::AccentCharcoal    = "#1D1D1F";
 const QString Theme::AccentHover       = "#3A3A3C";

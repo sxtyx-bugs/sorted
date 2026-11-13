@@ -30,6 +30,7 @@ HistoryPage::HistoryPage(Operations::OperationJournal* journal,
                          Operations::FileOperationService* opService,
                          QWidget* parent)
     : QWidget(parent), m_journal(journal), m_opService(opService) {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
     applyTheme();
 }
@@ -47,16 +48,19 @@ void HistoryPage::setupUi() {
 
     m_btnUndo = new QPushButton("↺  Undo Last Batch", this);
     m_btnUndo->setObjectName("btnSubtle");
+    m_btnUndo->setFixedHeight(36);
     connect(m_btnUndo, &QPushButton::clicked, this, &HistoryPage::onUndoSelectedClicked);
     headerLayout->addWidget(m_btnUndo);
 
     m_btnExportCsv = new QPushButton("📥  Export CSV", this);
     m_btnExportCsv->setObjectName("btnSubtle");
+    m_btnExportCsv->setFixedHeight(36);
     connect(m_btnExportCsv, &QPushButton::clicked, this, &HistoryPage::onExportCsvClicked);
     headerLayout->addWidget(m_btnExportCsv);
 
     m_btnRefresh = new QPushButton("Refresh", this);
     m_btnRefresh->setObjectName("btnSubtle");
+    m_btnRefresh->setFixedHeight(36);
     connect(m_btnRefresh, &QPushButton::clicked, this, &HistoryPage::onRefreshClicked);
     headerLayout->addWidget(m_btnRefresh);
 
@@ -64,6 +68,7 @@ void HistoryPage::setupUi() {
 
     // 44px Row Height Audit Table
     m_tableWidget = new QTableWidget(this);
+    m_tableWidget->setFrameShape(QFrame::NoFrame);
     m_tableWidget->setColumnCount(4);
     m_tableWidget->setHorizontalHeaderLabels({"Timestamp", "Source Path", "Destination Path", "Status"});
     m_tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
@@ -79,6 +84,7 @@ void HistoryPage::setupUi() {
 
 void HistoryPage::applyTheme() {
     ColorTheme theme = Theme::currentTheme;
+    setStyleSheet(QString("HistoryPage { background-color: %1; }").arg(Theme::getCanvas()));
     m_tableWidget->setStyleSheet(Theme::getTableStyleSheet(theme));
     m_lblTitle->setStyleSheet(QString("font-size: 16px; font-weight: 600; color: %1;").arg(Theme::getTextPrimary()));
 
@@ -93,7 +99,7 @@ void HistoryPage::applyTheme() {
         if (auto it = m_tableWidget->item(r, 3)) {
             QString st = it->text();
             if (st == "Completed") it->setForeground(QColor(Theme::StatusSuccess));
-            else if (st == "Rolled Back") it->setForeground(QColor(Theme::StatusWarning));
+            else if (st == "Undone") it->setForeground(QColor(Theme::StatusWarning));
             else it->setForeground(QColor(Theme::StatusDanger));
         }
     }
@@ -101,7 +107,7 @@ void HistoryPage::applyTheme() {
 
 void HistoryPage::refreshHistory() {
     if (!m_journal) return;
-    m_history = m_journal->getHistory();
+    m_history = m_journal->loadHistory();
     renderTable();
 }
 
@@ -124,26 +130,10 @@ void HistoryPage::renderTable() {
         auto itemDest = new QTableWidgetItem(QString::fromStdWString(op.destination.wstring()));
         itemDest->setForeground(QColor(textPri));
 
-        QString stStr;
-        QColor stCol;
-        switch (op.status) {
-            case MoveStatus::Success:
-                stStr = "Completed";
-                stCol = QColor(Theme::StatusSuccess);
-                break;
-            case MoveStatus::RolledBack:
-                stStr = "Rolled Back";
-                stCol = QColor(Theme::StatusWarning);
-                break;
-            case MoveStatus::Failed:
-                stStr = "Failed";
-                stCol = QColor(Theme::StatusDanger);
-                break;
-            default:
-                stStr = "Pending";
-                stCol = QColor(textSec);
-                break;
-        }
+        QString stStr = QString::fromStdString(moveStatusToString(op.status));
+        QColor stCol = (op.status == MoveStatus::Completed) ? QColor(Theme::StatusSuccess) :
+                       (op.status == MoveStatus::Undone) ? QColor(Theme::StatusWarning) :
+                       QColor(Theme::StatusDanger);
 
         auto itemStatus = new QTableWidgetItem(stStr);
         itemStatus->setForeground(stCol);
@@ -165,37 +155,43 @@ void HistoryPage::onUndoSelectedClicked() {
         return;
     }
 
-    std::string lastBatch = m_history.back().batchId;
     std::vector<MoveOperation> eligible;
-    for (const auto& op : m_history) {
-        if (op.batchId == lastBatch && op.status == MoveStatus::Success) {
-            eligible.push_back(op);
+    for (auto it = m_history.rbegin(); it != m_history.rend(); ++it) {
+        if (it->status == MoveStatus::Completed) {
+            eligible.push_back(*it);
         }
     }
 
     if (eligible.empty()) {
-        QMessageBox::information(this, "Nothing to Undo", "All operations in the latest batch were already rolled back or failed.");
+        QMessageBox::information(this, "Nothing to Undo", "All recorded operations were already undone or failed.");
         return;
     }
 
     auto reply = QMessageBox::question(
         this, "Confirm Undo",
-        QString("Rollback %1 file moves from batch %2?")
-            .arg(eligible.size())
-            .arg(QString::fromStdString(lastBatch)),
+        QString("Rollback %1 completed file move(s)?")
+            .arg(eligible.size()),
         QMessageBox::Yes | QMessageBox::No
     );
 
-    if (reply == QMessageBox::Yes) {
-        auto summary = m_opService->undoBatch(eligible);
+    if (reply == QMessageBox::Yes && m_opService) {
+        std::size_t successCount = 0;
+        std::size_t failedCount = 0;
+        for (auto& op : eligible) {
+            if (m_opService->undoMove(op)) {
+                successCount++;
+            } else {
+                failedCount++;
+            }
+        }
         refreshHistory();
         emit historyChanged();
 
         QMessageBox::information(
             this, "Undo Complete",
             QString("Successfully rolled back %1 moves. Failed: %2.")
-                .arg(summary.successCount)
-                .arg(summary.failedCount)
+                .arg(successCount)
+                .arg(failedCount)
         );
     }
 }
@@ -216,17 +212,14 @@ void HistoryPage::onExportCsvClicked() {
     }
 
     QTextStream out(&file);
-    out << "BatchID,Timestamp,SourcePath,DestinationPath,Status\n";
+    out << "ID,Timestamp,SourcePath,DestinationPath,Status\n";
 
     for (const auto& op : m_history) {
-        QString statusStr = (op.status == MoveStatus::Success) ? "Completed" :
-                            (op.status == MoveStatus::RolledBack) ? "RolledBack" : "Failed";
-
-        out << "\"" << QString::fromStdString(op.batchId) << "\","
+        out << op.id << ","
             << "\"" << formatTime(op.timestamp) << "\","
             << "\"" << QString::fromStdWString(op.source.wstring()) << "\","
             << "\"" << QString::fromStdWString(op.destination.wstring()) << "\","
-            << "\"" << statusStr << "\"\n";
+            << "\"" << QString::fromStdString(moveStatusToString(op.status)) << "\"\n";
     }
 
     file.close();

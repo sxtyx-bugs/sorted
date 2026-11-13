@@ -20,6 +20,7 @@ QString formatBytes(std::uintmax_t bytes) {
 
 OverviewPage::OverviewPage(QWidget* parent)
     : QWidget(parent) {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
     applyTheme();
     showEmptyState();
@@ -31,11 +32,13 @@ void OverviewPage::setupUi() {
     mainLayout->setSpacing(0);
 
     m_pageStack = new QStackedWidget(this);
+    m_pageStack->setAttribute(Qt::WA_StyledBackground, true);
 
     // =========================================================
     // 1. Onboarding / First-Launch Empty State
     // =========================================================
-    m_emptyWidget = new QWidget(this);
+    m_emptyWidget = new QWidget(m_pageStack);
+    m_emptyWidget->setAttribute(Qt::WA_StyledBackground, true);
     auto emptyLayout = new QVBoxLayout(m_emptyWidget);
     emptyLayout->setContentsMargins(48, 64, 48, 64);
     emptyLayout->setSpacing(16);
@@ -79,7 +82,8 @@ void OverviewPage::setupUi() {
     // =========================================================
     // 2. Populated Results View
     // =========================================================
-    m_resultsWidget = new QWidget(this);
+    m_resultsWidget = new QWidget(m_pageStack);
+    m_resultsWidget->setAttribute(Qt::WA_StyledBackground, true);
     auto resultsLayout = new QVBoxLayout(m_resultsWidget);
     resultsLayout->setContentsMargins(36, 24, 36, 24);
     resultsLayout->setSpacing(18);
@@ -167,6 +171,12 @@ void OverviewPage::showEmptyState() {
 
 void OverviewPage::applyTheme() {
     ColorTheme theme = Theme::currentTheme;
+    QString canvas = Theme::getCanvas();
+    setStyleSheet(QString("OverviewPage { background-color: %1; }").arg(canvas));
+    if (m_emptyWidget) m_emptyWidget->setStyleSheet(QString("QWidget { background-color: %1; }").arg(canvas));
+    if (m_resultsWidget) m_resultsWidget->setStyleSheet(QString("QWidget { background-color: %1; }").arg(canvas));
+
+    m_tableCategories->setFrameShape(QFrame::NoFrame);
     m_tableCategories->setStyleSheet(Theme::getTableStyleSheet(theme));
     m_cardScanMeta->setStyleSheet(Theme::getCardStyleSheet(theme));
 

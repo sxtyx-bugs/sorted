@@ -26,6 +26,7 @@ QString formatBytes(std::uintmax_t bytes) {
 
 FilesPage::FilesPage(QWidget* parent)
     : QWidget(parent) {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
     applyTheme();
 }
@@ -35,37 +36,45 @@ void FilesPage::setupUi() {
     mainLayout->setContentsMargins(36, 24, 36, 24);
     mainLayout->setSpacing(14);
 
-    // Control Bar (Search, Category, Sort)
-    auto ctrlBar = new QHBoxLayout();
+    // Dedicated Control Bar Container
+    auto toolbarWidget = new QWidget(this);
+    toolbarWidget->setObjectName("filesToolbar");
+    auto ctrlBar = new QHBoxLayout(toolbarWidget);
+    ctrlBar->setContentsMargins(0, 0, 0, 0);
     ctrlBar->setSpacing(12);
 
-    m_searchEdit = new QLineEdit(this);
+    m_searchEdit = new QLineEdit(toolbarWidget);
     m_searchEdit->setPlaceholderText("Search file name... (Ctrl+K)");
+    m_searchEdit->setFixedHeight(36);
     connect(m_searchEdit, &QLineEdit::textChanged, this, &FilesPage::onSearchChanged);
     ctrlBar->addWidget(m_searchEdit, 2);
 
-    m_categoryCombo = new QComboBox(this);
+    m_categoryCombo = new QComboBox(toolbarWidget);
     m_categoryCombo->addItem("All Categories");
+    m_categoryCombo->setFixedHeight(36);
     connect(m_categoryCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &FilesPage::onCategoryChanged);
     ctrlBar->addWidget(m_categoryCombo, 1);
 
-    m_sortCombo = new QComboBox(this);
+    m_sortCombo = new QComboBox(toolbarWidget);
     m_sortCombo->addItem("Sort: Name (A-Z)");
     m_sortCombo->addItem("Sort: Size (Smallest)");
     m_sortCombo->addItem("Sort: Size (Largest)");
+    m_sortCombo->setFixedHeight(36);
     connect(m_sortCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &FilesPage::onSortChanged);
     ctrlBar->addWidget(m_sortCombo, 1);
 
-    mainLayout->addLayout(ctrlBar);
+    mainLayout->addWidget(toolbarWidget);
 
     m_lblCount = new QLabel("DAA Merge Sort ready: O(n log n)", this);
+    m_lblCount->setFixedHeight(22);
     m_lblCount->setStyleSheet("font-size: 12px; margin-bottom: 2px;");
     mainLayout->addWidget(m_lblCount);
 
     // 44px Row Height Data Table
     m_tableWidget = new QTableWidget(this);
+    m_tableWidget->setFrameShape(QFrame::NoFrame);
     m_tableWidget->setColumnCount(5);
     m_tableWidget->setHorizontalHeaderLabels({"Name", "Category", "Ext", "Size", "Current Location"});
     m_tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
@@ -86,6 +95,7 @@ void FilesPage::setupUi() {
 
 void FilesPage::applyTheme() {
     ColorTheme theme = Theme::currentTheme;
+    setStyleSheet(QString("FilesPage { background-color: %1; }").arg(Theme::getCanvas()));
     m_tableWidget->setStyleSheet(Theme::getTableStyleSheet(theme));
     m_lblCount->setStyleSheet(QString("font-size: 12px; color: %1; margin-bottom: 2px;").arg(Theme::getTextSecondary()));
 

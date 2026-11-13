@@ -20,6 +20,7 @@ QString formatBytes(std::uintmax_t bytes) {
 
 CategoriesPage::CategoriesPage(QWidget* parent)
     : QWidget(parent) {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
     applyTheme();
 }
@@ -29,11 +30,18 @@ void CategoriesPage::setupUi() {
     layout->setContentsMargins(36, 24, 36, 24);
     layout->setSpacing(14);
 
-    m_lblTitle = new QLabel("Taxonomy & Target Directories", this);
+    auto headerWidget = new QWidget(this);
+    auto headerLayout = new QHBoxLayout(headerWidget);
+    headerLayout->setContentsMargins(0, 0, 0, 4);
+
+    m_lblTitle = new QLabel("Taxonomy & Target Directories", headerWidget);
     m_lblTitle->setStyleSheet("font-size: 16px; font-weight: 600;");
-    layout->addWidget(m_lblTitle);
+    headerLayout->addWidget(m_lblTitle);
+    headerLayout->addStretch();
+    layout->addWidget(headerWidget);
 
     m_tableCategories = new QTableWidget(this);
+    m_tableCategories->setFrameShape(QFrame::NoFrame);
     m_tableCategories->setColumnCount(4);
     m_tableCategories->setHorizontalHeaderLabels({"Category", "Files Count", "Storage Volume", "Target Directory Pattern"});
     m_tableCategories->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
@@ -53,6 +61,7 @@ void CategoriesPage::setupUi() {
 
 void CategoriesPage::applyTheme() {
     ColorTheme theme = Theme::currentTheme;
+    setStyleSheet(QString("CategoriesPage { background-color: %1; }").arg(Theme::getCanvas()));
     m_tableCategories->setStyleSheet(Theme::getTableStyleSheet(theme));
     m_lblTitle->setStyleSheet(QString("font-size: 16px; font-weight: 600; color: %1;").arg(Theme::getTextPrimary()));
 

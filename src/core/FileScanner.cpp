@@ -1,5 +1,6 @@
 #include "FileScanner.h"
 #include "FileClassifier.h"
+#include "PathUtils.h"
 #include <iostream>
 #include <system_error>
 
@@ -9,23 +10,8 @@
 
 namespace Core {
 
-namespace {
-
-std::string pathToUtf8(const fs::path& p) {
-#if defined(_WIN32)
-    std::wstring ws = p.wstring();
-    if (ws.empty()) return std::string();
-    int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()), nullptr, 0, nullptr, nullptr);
-    if (sizeNeeded <= 0) return std::string();
-    std::string result(sizeNeeded, 0);
-    WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()), &result[0], sizeNeeded, nullptr, nullptr);
-    return result;
-#else
-    return p.string();
-#endif
-}
-
-} // namespace
+using PathUtils::pathToUtf8;
+using PathUtils::weaklyCanonicalSafe;
 
 FileScanner::FileScanner() {
     m_excludedFolderNames.insert("Sorted");
@@ -123,6 +109,8 @@ std::vector<FileRecord> FileScanner::scan(
     addExcludedPath(rootDir / "Sorted");
     addExcludedPath(rootDir / ".sorted");
 
+    fs::path canonicalRootDir = weaklyCanonicalSafe(rootDir);
+
     fs::directory_options options = fs::directory_options::skip_permission_denied;
     // NON-RECURSIVE directory iteration ONLY - Root-level files only!
     auto iter = fs::directory_iterator(rootDir, options, ec);
@@ -144,6 +132,20 @@ std::vector<FileRecord> FileScanner::scan(
 
         try {
             fs::path path = iter->path(); // Value copy to avoid iterator invalidation
+
+#ifdef _WIN32
+            DWORD attrs = GetFileAttributesW(path.c_str());
+            if (attrs != INVALID_FILE_ATTRIBUTES) {
+                // Handle directory junctions and reparse folders without recursion
+                if ((attrs & FILE_ATTRIBUTE_DIRECTORY) && (attrs & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                    if (!isExcluded(path, rootDir)) {
+                        m_protectedFolders.push_back(path);
+                    }
+                    iter.increment(ec);
+                    continue;
+                }
+            }
+#endif
 
             // Check symlinks safely
             std::error_code statusEc;
@@ -186,8 +188,7 @@ std::vector<FileRecord> FileScanner::scan(
                 }
 
                 // Safety assertion: file must be a direct child of rootDir
-                std::error_code canEc;
-                if (fs::weakly_canonical(path.parent_path(), canEc) != fs::weakly_canonical(rootDir, canEc)) {
+                if (weaklyCanonicalSafe(path.parent_path()) != canonicalRootDir) {
                     iter.increment(ec);
                     continue;
                 }

@@ -1,4 +1,5 @@
 #include "FileClassifier.h"
+#include "PathUtils.h"
 #include <algorithm>
 #include <cctype>
 
@@ -27,7 +28,7 @@ std::string FileClassifier::normalizeExtension(const std::string& ext) {
 }
 
 std::string FileClassifier::extractNormalizedExtension(const fs::path& filePath) {
-    std::string ext = filePath.extension().string();
+    std::string ext = PathUtils::pathToUtf8(filePath.extension());
     return normalizeExtension(ext);
 }
 

@@ -20,6 +20,7 @@ QString formatBytes(std::uintmax_t bytes) {
 
 OverviewPage::OverviewPage(QWidget* parent)
     : QWidget(parent) {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
     applyTheme();
     showEmptyState();
@@ -31,11 +32,13 @@ void OverviewPage::setupUi() {
     mainLayout->setSpacing(0);
 
     m_pageStack = new QStackedWidget(this);
+    m_pageStack->setAttribute(Qt::WA_StyledBackground, true);
 
     // =========================================================
     // 1. Onboarding / First-Launch Empty State
     // =========================================================
-    m_emptyWidget = new QWidget(this);
+    m_emptyWidget = new QWidget(m_pageStack);
+    m_emptyWidget->setAttribute(Qt::WA_StyledBackground, true);
     auto emptyLayout = new QVBoxLayout(m_emptyWidget);
     emptyLayout->setContentsMargins(48, 64, 48, 64);
     emptyLayout->setSpacing(16);
@@ -79,7 +82,8 @@ void OverviewPage::setupUi() {
     // =========================================================
     // 2. Populated Results View
     // =========================================================
-    m_resultsWidget = new QWidget(this);
+    m_resultsWidget = new QWidget(m_pageStack);
+    m_resultsWidget->setAttribute(Qt::WA_StyledBackground, true);
     auto resultsLayout = new QVBoxLayout(m_resultsWidget);
     resultsLayout->setContentsMargins(36, 24, 36, 24);
     resultsLayout->setSpacing(18);
@@ -150,6 +154,10 @@ QFrame* OverviewPage::createMetricTile(const QString& title, QLabel*& valueLabel
     auto lblSub = new QLabel(subtitle, card);
     lblSub->setStyleSheet("font-size: 11px; border: none;");
 
+    m_metricTitleLabels.push_back(lblTitle);
+    m_metricValueLabels.push_back(valueLabel);
+    m_metricSubLabels.push_back(lblSub);
+
     layout->addWidget(lblTitle);
     layout->addWidget(valueLabel);
     layout->addWidget(lblSub);
@@ -163,12 +171,29 @@ void OverviewPage::showEmptyState() {
 
 void OverviewPage::applyTheme() {
     ColorTheme theme = Theme::currentTheme;
+    QString canvas = Theme::getCanvas();
+    setStyleSheet(QString("OverviewPage { background-color: %1; }").arg(canvas));
+    if (m_emptyWidget) m_emptyWidget->setStyleSheet(QString("QWidget { background-color: %1; }").arg(canvas));
+    if (m_resultsWidget) m_resultsWidget->setStyleSheet(QString("QWidget { background-color: %1; }").arg(canvas));
+
+    m_tableCategories->setFrameShape(QFrame::NoFrame);
     m_tableCategories->setStyleSheet(Theme::getTableStyleSheet(theme));
     m_cardScanMeta->setStyleSheet(Theme::getCardStyleSheet(theme));
 
     QString textPri = Theme::getTextPrimary();
     QString textSec = Theme::getTextSecondary();
     QString textMuted = Theme::getTextMuted();
+
+    // Metric tiles labels
+    for (auto* lbl : m_metricTitleLabels) {
+        lbl->setStyleSheet(QString("font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: %1; border: none;").arg(textSec));
+    }
+    for (auto* lbl : m_metricValueLabels) {
+        lbl->setStyleSheet(QString("font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: %1; border: none;").arg(textPri));
+    }
+    for (auto* lbl : m_metricSubLabels) {
+        lbl->setStyleSheet(QString("font-size: 11px; color: %1; border: none;").arg(textMuted));
+    }
 
     // Empty state labels
     m_lblEmptyHeading->setStyleSheet(QString("font-size: 20px; font-weight: 600; color: %1; letter-spacing: -0.3px; border: none;").arg(textPri));
