@@ -107,7 +107,7 @@ void GlassSidebar::paintEvent(QPaintEvent* event) {
         painter.restore();
     }
 
-    // 2. Dark Smoked Translucent Liquid Glass Material Wash
+    // 2. Liquid Glass Material Wash (Frosted Light in Light Mode, Dark Smoked in Dark Mode)
     bool dark = Theme::isDark();
     QLinearGradient grad(r.topLeft(), r.bottomRight());
     if (dark) {
@@ -115,9 +115,9 @@ void GlassSidebar::paintEvent(QPaintEvent* event) {
         grad.setColorAt(0.5, QColor(14, 14, 18, 185));
         grad.setColorAt(1.0, QColor(22, 22, 26, 195));
     } else {
-        grad.setColorAt(0.0, QColor(24, 24, 28, 180));
-        grad.setColorAt(0.5, QColor(20, 20, 24, 175));
-        grad.setColorAt(1.0, QColor(26, 26, 30, 185));
+        grad.setColorAt(0.0, QColor(255, 255, 255, 225));
+        grad.setColorAt(0.5, QColor(248, 248, 246, 215));
+        grad.setColorAt(1.0, QColor(242, 242, 240, 225));
     }
     painter.fillPath(path, grad);
 
@@ -125,13 +125,19 @@ void GlassSidebar::paintEvent(QPaintEvent* event) {
     QPainterPath innerPath;
     innerPath.addRoundedRect(r.adjusted(1.0, 1.0, -1.0, -1.0), qMax(0.0, radius - 1.0), qMax(0.0, radius - 1.0));
     QLinearGradient topGrad(r.topLeft(), QPointF(r.left(), r.top() + 45));
-    topGrad.setColorAt(0.0, QColor(255, 255, 255, 85));
-    topGrad.setColorAt(0.3, QColor(255, 255, 255, 25));
-    topGrad.setColorAt(1.0, QColor(255, 255, 255, 0));
+    if (dark) {
+        topGrad.setColorAt(0.0, QColor(255, 255, 255, 85));
+        topGrad.setColorAt(0.3, QColor(255, 255, 255, 25));
+        topGrad.setColorAt(1.0, QColor(255, 255, 255, 0));
+    } else {
+        topGrad.setColorAt(0.0, QColor(255, 255, 255, 180));
+        topGrad.setColorAt(0.3, QColor(255, 255, 255, 80));
+        topGrad.setColorAt(1.0, QColor(255, 255, 255, 0));
+    }
     painter.strokePath(innerPath, QPen(QBrush(topGrad), 1.0));
 
     // 4. Perimeter Edge Reflection Rim
-    QPen borderPen(QColor(255, 255, 255, 38), 1.0);
+    QPen borderPen(dark ? QColor(255, 255, 255, 38) : QColor(0, 0, 0, 22), 1.0);
     painter.strokePath(path, borderPen);
 }
 

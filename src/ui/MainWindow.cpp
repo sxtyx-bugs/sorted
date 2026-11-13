@@ -21,74 +21,80 @@ void ScanWorker::cancel() {
 }
 
 void ScanWorker::run() {
-    ScanResult result;
-    result.rootPath = m_rootPath;
+    try {
+        ScanResult result;
+        result.rootPath = m_rootPath;
 
-    Core::FileScanner scanner;
-    scanner.setIncludeHiddenFiles(m_includeHidden);
+        Core::FileScanner scanner;
+        scanner.setIncludeHiddenFiles(m_includeHidden);
 
-    auto startScan = std::chrono::high_resolution_clock::now();
+        auto startScan = std::chrono::high_resolution_clock::now();
 
-    result.files = scanner.scan(
-        m_rootPath,
-        &m_cancelRequested,
-        [this](std::size_t count, const fs::path& currentDir) {
-            emit progress(static_cast<int>(count), QString::fromStdWString(currentDir.wstring()));
+        result.files = scanner.scan(
+            m_rootPath,
+            &m_cancelRequested,
+            [this](std::size_t count, const fs::path& currentDir) {
+                emit progress(static_cast<int>(count), QString::fromStdWString(currentDir.wstring()));
+            }
+        );
+
+        auto endScan = std::chrono::high_resolution_clock::now();
+        result.stats.scanDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(endScan - startScan);
+        result.stats.totalFilesScanned = result.files.size();
+        result.scanErrors = scanner.getErrors();
+        result.stats.errorCount = result.scanErrors.size();
+
+        if (m_cancelRequested.load()) {
+            emit finished(result);
+            return;
         }
-    );
 
-    auto endScan = std::chrono::high_resolution_clock::now();
-    result.stats.scanDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(endScan - startScan);
-    result.stats.totalFilesScanned = result.files.size();
-    result.scanErrors = scanner.getErrors();
-    result.stats.errorCount = result.scanErrors.size();
+        // Step 2: Classification
+        auto startClassify = std::chrono::high_resolution_clock::now();
+        Core::FileClassifier classifier;
+        classifier.classifyAll(result.files);
 
-    if (m_cancelRequested.load()) {
-        emit finished(result);
-        return;
-    }
-
-    // Step 2: Classification
-    auto startClassify = std::chrono::high_resolution_clock::now();
-    Core::FileClassifier classifier;
-    classifier.classifyAll(result.files);
-
-    for (const auto& f : result.files) {
-        result.stats.totalSizeBytes += f.size;
-        result.stats.categoryCounts[f.category]++;
-        result.stats.categorySizes[f.category] += f.size;
-    }
-    auto endClassify = std::chrono::high_resolution_clock::now();
-    result.stats.classifyDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(endClassify - startClassify);
-
-    if (m_cancelRequested.load()) {
-        emit finished(result);
-        return;
-    }
-
-    // Step 3: Duplicate Detection (Size Prefilter + SHA-256)
-    auto startHash = std::chrono::high_resolution_clock::now();
-    Core::DuplicateDetector detector;
-    result.duplicateGroups = detector.detectDuplicates(
-        result.files,
-        result.stats.totalBytesHashed,
-        &m_cancelRequested,
-        [this](std::size_t processed, std::size_t total, const fs::path& currentFile) {
-            emit hashProgress(static_cast<int>(processed), static_cast<int>(total),
-                             QString::fromStdString(currentFile.filename().string()));
+        for (const auto& f : result.files) {
+            result.stats.totalSizeBytes += f.size;
+            result.stats.categoryCounts[f.category]++;
+            result.stats.categorySizes[f.category] += f.size;
         }
-    );
-    auto endHash = std::chrono::high_resolution_clock::now();
-    result.stats.hashDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(endHash - startHash);
-    result.stats.duplicateGroupCount = result.duplicateGroups.size();
+        auto endClassify = std::chrono::high_resolution_clock::now();
+        result.stats.classifyDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(endClassify - startClassify);
 
-    std::size_t totalDupCandidates = 0;
-    for (const auto& group : result.duplicateGroups) {
-        totalDupCandidates += group.files.size();
+        if (m_cancelRequested.load()) {
+            emit finished(result);
+            return;
+        }
+
+        // Step 3: Duplicate Detection (Size Prefilter + SHA-256)
+        auto startHash = std::chrono::high_resolution_clock::now();
+        Core::DuplicateDetector detector;
+        result.duplicateGroups = detector.detectDuplicates(
+            result.files,
+            result.stats.totalBytesHashed,
+            &m_cancelRequested,
+            [this](std::size_t processed, std::size_t total, const fs::path& currentFile) {
+                emit hashProgress(static_cast<int>(processed), static_cast<int>(total),
+                                 QString::fromStdWString(currentFile.filename().wstring()));
+            }
+        );
+        auto endHash = std::chrono::high_resolution_clock::now();
+        result.stats.hashDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(endHash - startHash);
+        result.stats.duplicateGroupCount = result.duplicateGroups.size();
+
+        std::size_t totalDupCandidates = 0;
+        for (const auto& group : result.duplicateGroups) {
+            totalDupCandidates += group.files.size();
+        }
+        result.stats.duplicateCandidateCount = totalDupCandidates;
+
+        emit finished(result);
+    } catch (const std::exception& e) {
+        emit error(QString::fromUtf8(e.what()));
+    } catch (...) {
+        emit error("An unexpected system exception occurred during scanning.");
     }
-    result.stats.duplicateCandidateCount = totalDupCandidates;
-
-    emit finished(result);
 }
 
 // -------------------------------------------------------------
@@ -102,16 +108,28 @@ void ExecutionWorker::cancel() {
 }
 
 void ExecutionWorker::run() {
-    auto summary = m_opService->executeBatch(
-        m_moves,
-        &m_cancelRequested,
-        [this](std::size_t completed, std::size_t total, const MoveOperation& op) {
-            emit moveProgress(static_cast<int>(completed), static_cast<int>(total),
-                             QString::fromStdString(op.source.filename().string()));
-        }
-    );
+    try {
+        auto summary = m_opService->executeBatch(
+            m_moves,
+            &m_cancelRequested,
+            [this](std::size_t completed, std::size_t total, const MoveOperation& op) {
+                emit moveProgress(static_cast<int>(completed), static_cast<int>(total),
+                                 QString::fromStdWString(op.source.filename().wstring()));
+            }
+        );
 
-    emit finished(summary, m_moves);
+        emit finished(summary, m_moves);
+    } catch (const std::exception& e) {
+        Operations::ExecutionSummary failedSummary;
+        failedSummary.failed = m_moves.size();
+        failedSummary.errors.push_back(std::string("Execution failed: ") + e.what());
+        emit finished(failedSummary, m_moves);
+    } catch (...) {
+        Operations::ExecutionSummary failedSummary;
+        failedSummary.failed = m_moves.size();
+        failedSummary.errors.push_back("Execution failed due to an unknown exception.");
+        emit finished(failedSummary, m_moves);
+    }
 }
 
 // -------------------------------------------------------------
@@ -119,23 +137,34 @@ void ExecutionWorker::run() {
 // -------------------------------------------------------------
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), m_planner(m_classifier), m_opService(&m_journal) {
-    setupUi();
-    applyTheme();
+    qRegisterMetaType<Ui::ScanResult>("ScanResult");
+    qRegisterMetaType<Ui::ScanResult>("Ui::ScanResult");
+    qRegisterMetaType<Operations::ExecutionSummary>("Operations::ExecutionSummary");
+    qRegisterMetaType<std::vector<MoveOperation>>("std::vector<MoveOperation>");
 
-    // Check previously selected workspace via QSettings
+    setupUi();
+    // Check previously selected workspace and theme via QSettings
     loadSettings();
 }
 
 MainWindow::~MainWindow() {
-    if (m_scanThread && m_scanThread->isRunning()) {
-        if (m_scanWorker) m_scanWorker->cancel();
+    if (m_scanWorker) {
+        m_scanWorker->cancel();
+    }
+    if (m_scanThread) {
         m_scanThread->quit();
         m_scanThread->wait();
+        m_scanThread = nullptr;
+        m_scanWorker = nullptr;
     }
-    if (m_execThread && m_execThread->isRunning()) {
-        if (m_execWorker) m_execWorker->cancel();
+    if (m_execWorker) {
+        m_execWorker->cancel();
+    }
+    if (m_execThread) {
         m_execThread->quit();
         m_execThread->wait();
+        m_execThread = nullptr;
+        m_execWorker = nullptr;
     }
 }
 
@@ -339,6 +368,10 @@ void MainWindow::loadSettings() {
     if (collapsed && !m_sidebarCollapsed) {
         toggleSidebar();
     }
+
+    QString savedTheme = settings.value("theme", "Dark").toString();
+    Theme::applyTheme(savedTheme == "Light" ? ColorTheme::Light : ColorTheme::Dark);
+    applyTheme();
 }
 
 void MainWindow::saveSettings() {
@@ -347,6 +380,7 @@ void MainWindow::saveSettings() {
         settings.setValue("lastWorkspacePath", QString::fromStdWString(m_selectedRoot.wstring()));
     }
     settings.setValue("sidebarCollapsed", m_sidebarCollapsed);
+    settings.setValue("theme", Theme::isDark() ? "Dark" : "Light");
 }
 
 void MainWindow::updateTopToolbarFolder() {
@@ -359,19 +393,17 @@ void MainWindow::updateTopToolbarFolder() {
         return;
     }
 
-    std::string folderName = m_selectedRoot.filename().string();
-    if (folderName.empty()) {
-        folderName = m_selectedRoot.string();
+    std::wstring folderNameWs = m_selectedRoot.filename().wstring();
+    if (folderNameWs.empty()) {
+        folderNameWs = m_selectedRoot.wstring();
     }
-    m_lblFolderName->setText(QString::fromStdString(folderName));
+    m_lblFolderName->setText(QString::fromStdWString(folderNameWs));
 
-    std::string fullPath = m_selectedRoot.string();
-    std::string shortPath = fullPath;
-    if (shortPath.length() > 32) {
-        shortPath = "..." + shortPath.substr(shortPath.length() - 28);
-    }
-    m_lblFolderPath->setText(QString::fromStdString("(" + shortPath + ")"));
-    m_lblFolderPath->setToolTip(QString::fromStdWString(m_selectedRoot.wstring()));
+    QString fullPathStr = QString::fromStdWString(m_selectedRoot.wstring());
+    QFontMetrics fm(m_lblFolderPath->font());
+    QString elided = fm.elidedText("(" + fullPathStr + ")", Qt::ElideMiddle, 280);
+    m_lblFolderPath->setText(elided);
+    m_lblFolderPath->setToolTip(fullPathStr);
     m_btnChangeFolder->setText("Change");
     m_btnScan->setEnabled(true);
 }
@@ -419,6 +451,7 @@ void MainWindow::toggleTheme() {
     Theme::toggleTheme();
     applyTheme();
     Glass::WindowBackdrop::setDarkMode(this, Theme::isDark());
+    saveSettings();
 }
 
 void MainWindow::focusSearch() {
@@ -437,6 +470,7 @@ void MainWindow::applyTheme() {
     QString textMuted = Theme::getTextMuted();
 
     m_lblLogo->setStyleSheet(QString("font-size: 22px; font-weight: 700; color: %1; letter-spacing: -0.5px; border: none;").arg(textPri));
+    m_lblDot->setStyleSheet(QString("font-size: 10px; color: %1; margin-top: 4px; border: none;").arg(textPri));
     m_lblTagline->setStyleSheet(QString("font-size: 11px; color: %1; margin-bottom: 6px; padding-left: 4px; border: none;").arg(textMuted));
     m_lblFolderName->setStyleSheet(QString("font-size: 13px; font-weight: 600; color: %1; border: none;").arg(textPri));
     m_lblFolderPath->setStyleSheet(QString("font-size: 11px; color: %1; border: none;").arg(textSec));
@@ -514,8 +548,14 @@ void MainWindow::onStartScanClicked() {
     connect(m_scanWorker, &ScanWorker::error, this, &MainWindow::onScanError);
 
     connect(m_scanWorker, &ScanWorker::finished, m_scanThread, &QThread::quit);
+    connect(m_scanWorker, &ScanWorker::error, m_scanThread, &QThread::quit);
     connect(m_scanWorker, &ScanWorker::finished, m_scanWorker, &QObject::deleteLater);
+    connect(m_scanWorker, &ScanWorker::error, m_scanWorker, &QObject::deleteLater);
     connect(m_scanThread, &QThread::finished, m_scanThread, &QObject::deleteLater);
+    connect(m_scanThread, &QThread::finished, this, [this]() {
+        m_scanThread = nullptr;
+        m_scanWorker = nullptr;
+    });
 
     m_scanThread->start();
 }
@@ -582,6 +622,10 @@ void MainWindow::onApplyApprovedMoves(const std::vector<MoveOperation>& approved
     connect(m_execWorker, &ExecutionWorker::finished, m_execThread, &QThread::quit);
     connect(m_execWorker, &ExecutionWorker::finished, m_execWorker, &QObject::deleteLater);
     connect(m_execThread, &QThread::finished, m_execThread, &QObject::deleteLater);
+    connect(m_execThread, &QThread::finished, this, [this]() {
+        m_execThread = nullptr;
+        m_execWorker = nullptr;
+    });
 
     m_execThread->start();
 }

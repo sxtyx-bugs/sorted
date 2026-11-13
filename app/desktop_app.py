@@ -12,6 +12,7 @@ import sys
 import os
 import time
 import csv
+import threading
 from pathlib import Path
 from datetime import datetime
 
@@ -1178,6 +1179,10 @@ class ScanWorker(QObject):
     def __init__(self, root_dir):
         super().__init__()
         self.root_dir = Path(root_dir)
+        self._cancel_requested = threading.Event()
+
+    def cancel(self):
+        self._cancel_requested.set()
 
     def run(self):
         self.progress.emit("Scanning workspace for root-level files (preserving subfolders)...")

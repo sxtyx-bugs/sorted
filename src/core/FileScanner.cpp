@@ -9,6 +9,24 @@
 
 namespace Core {
 
+namespace {
+
+std::string pathToUtf8(const fs::path& p) {
+#if defined(_WIN32)
+    std::wstring ws = p.wstring();
+    if (ws.empty()) return std::string();
+    int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()), nullptr, 0, nullptr, nullptr);
+    if (sizeNeeded <= 0) return std::string();
+    std::string result(sizeNeeded, 0);
+    WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()), &result[0], sizeNeeded, nullptr, nullptr);
+    return result;
+#else
+    return p.string();
+#endif
+}
+
+} // namespace
+
 FileScanner::FileScanner() {
     m_excludedFolderNames.insert("Sorted");
     m_excludedFolderNames.insert(".sorted");
@@ -36,18 +54,21 @@ void FileScanner::setIncludeHiddenFiles(bool includeHidden) {
 }
 
 bool FileScanner::isHidden(const fs::path& path) const {
-    // Check dot prefix
-    std::string filename = path.filename().string();
-    if (!filename.empty() && filename[0] == '.') {
-        return true;
-    }
+    try {
+        std::wstring ws = path.filename().wstring();
+        if (!ws.empty() && ws[0] == L'.') {
+            return true;
+        }
 
 #ifdef _WIN32
-    DWORD attrs = GetFileAttributesW(path.c_str());
-    if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_HIDDEN)) {
-        return true;
-    }
+        DWORD attrs = GetFileAttributesW(path.c_str());
+        if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_HIDDEN)) {
+            return true;
+        }
 #endif
+    } catch (...) {
+        return false;
+    }
 
     return false;
 }
@@ -71,7 +92,7 @@ bool FileScanner::isExcluded(const fs::path& path, const fs::path& rootDir) cons
 
     // Check folder names relative to root
     for (auto it = normPath.begin(); it != normPath.end(); ++it) {
-        std::string part = it->string();
+        std::string part = pathToUtf8(*it);
         if (m_excludedFolderNames.find(part) != m_excludedFolderNames.end()) {
             return true;
         }
@@ -92,7 +113,7 @@ std::vector<FileRecord> FileScanner::scan(
 
     std::error_code ec;
     if (!fs::exists(rootDir, ec) || !fs::is_directory(rootDir, ec)) {
-        std::string err = "Selected path does not exist or is not a directory: " + rootDir.string();
+        std::string err = "Selected path does not exist or is not a directory: " + pathToUtf8(rootDir);
         m_errors.push_back(err);
         if (onError) onError(rootDir, err);
         return records;
@@ -108,7 +129,7 @@ std::vector<FileRecord> FileScanner::scan(
     auto endIter = fs::directory_iterator();
 
     if (ec) {
-        std::string err = "Failed to open directory " + rootDir.string() + ": " + ec.message();
+        std::string err = "Failed to open directory " + pathToUtf8(rootDir) + ": " + ec.message();
         m_errors.push_back(err);
         if (onError) onError(rootDir, err);
         return records;
@@ -121,79 +142,95 @@ std::vector<FileRecord> FileScanner::scan(
             break;
         }
 
-        const auto& entry = *iter;
-        const auto& path = entry.path();
+        try {
+            fs::path path = iter->path(); // Value copy to avoid iterator invalidation
 
-        // Check symlinks
-        std::error_code statusEc;
-        auto symStatus = fs::symlink_status(path, statusEc);
-        if (fs::is_symlink(symStatus)) {
-            iter.increment(ec);
-            continue;
-        }
-
-        // Check directories: NEVER enter them, register as protected
-        if (fs::is_directory(entry.status())) {
-            if (!isExcluded(path, rootDir)) {
-                m_protectedFolders.push_back(path);
-            }
-            iter.increment(ec);
-            continue;
-        }
-
-        // Regular files directly in rootDir
-        if (fs::is_regular_file(entry.status())) {
-            if (isExcluded(path, rootDir)) {
+            // Check symlinks safely
+            std::error_code statusEc;
+            auto symStatus = fs::symlink_status(path, statusEc);
+            if (!statusEc && fs::is_symlink(symStatus)) {
                 iter.increment(ec);
                 continue;
             }
 
-            if (!m_includeHidden && isHidden(path)) {
+            // Check entry status with error_code to prevent throwing filesystem_error on locked/permission denied items
+            std::error_code stEc;
+            auto entryStatus = iter->status(stEc);
+            if (stEc) {
+                std::string err = "Cannot access file status: " + stEc.message();
+                m_errors.push_back(err + " (" + pathToUtf8(path) + ")");
+                if (onError) onError(path, err);
                 iter.increment(ec);
                 continue;
             }
 
-            // Safety assertion: file must be a direct child of rootDir
-            std::error_code canEc;
-            if (fs::weakly_canonical(path.parent_path(), canEc) != fs::weakly_canonical(rootDir, canEc)) {
+            // Check directories: NEVER enter them, register as protected
+            if (fs::is_directory(entryStatus)) {
+                if (!isExcluded(path, rootDir)) {
+                    m_protectedFolders.push_back(path);
+                }
                 iter.increment(ec);
                 continue;
             }
 
-            FileRecord record;
-            record.path = path;
-            record.name = path.filename().string();
-            record.extension = FileClassifier::extractNormalizedExtension(path);
+            // Regular files directly in rootDir
+            if (fs::is_regular_file(entryStatus)) {
+                if (isExcluded(path, rootDir)) {
+                    iter.increment(ec);
+                    continue;
+                }
 
-            std::error_code fileEc;
-            record.size = fs::file_size(path, fileEc);
-            if (fileEc) {
-                record.scanError = "Cannot read file size: " + fileEc.message();
-                record.eligible = false;
-                m_errors.push_back(record.scanError + " (" + path.string() + ")");
-                if (onError) onError(path, record.scanError);
+                if (!m_includeHidden && isHidden(path)) {
+                    iter.increment(ec);
+                    continue;
+                }
+
+                // Safety assertion: file must be a direct child of rootDir
+                std::error_code canEc;
+                if (fs::weakly_canonical(path.parent_path(), canEc) != fs::weakly_canonical(rootDir, canEc)) {
+                    iter.increment(ec);
+                    continue;
+                }
+
+                FileRecord record;
+                record.path = path;
+                record.name = pathToUtf8(path.filename());
+                record.extension = FileClassifier::extractNormalizedExtension(path);
+
+                std::error_code fileEc;
+                record.size = fs::file_size(path, fileEc);
+                if (fileEc) {
+                    record.scanError = "Cannot read file size: " + fileEc.message();
+                    record.eligible = false;
+                    m_errors.push_back(record.scanError + " (" + pathToUtf8(path) + ")");
+                    if (onError) onError(path, record.scanError);
+                }
+
+                fileEc.clear();
+                record.modifiedTime = fs::last_write_time(path, fileEc);
+                if (fileEc) {
+                    // If last write time fails, still record file
+                    record.scanError = "Cannot read modification time: " + fileEc.message();
+                }
+
+                records.push_back(record);
+                count++;
+
+                if (onProgress && (count % 25 == 0 || count == 1)) {
+                    onProgress(count, path.parent_path());
+                }
             }
-
-            fileEc.clear();
-            record.modifiedTime = fs::last_write_time(path, fileEc);
-            if (fileEc) {
-                // If last write time fails, still record file
-                record.scanError = "Cannot read modification time: " + fileEc.message();
-            }
-
-            records.push_back(record);
-            count++;
-
-            if (onProgress && (count % 25 == 0 || count == 1)) {
-                onProgress(count, path.parent_path());
-            }
+        } catch (const std::exception& ex) {
+            std::string err = std::string("Filesystem iteration exception: ") + ex.what();
+            m_errors.push_back(err);
+        } catch (...) {
+            m_errors.push_back("Unknown filesystem exception during scan iteration.");
         }
 
         iter.increment(ec);
         if (ec) {
             std::string err = "Error advancing directory iterator: " + ec.message();
             m_errors.push_back(err);
-            if (onError) onError(path, err);
             ec.clear();
         }
     }

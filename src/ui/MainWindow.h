@@ -176,3 +176,5 @@ private:
 };
 
 } // namespace Ui
+
+Q_DECLARE_METATYPE(Ui::ScanResult)

@@ -11,24 +11,30 @@ GlassDialog::GlassDialog(const QString& title, const QString& message, QWidget* 
     : QDialog(parent) {
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground, true);
-    setFixedSize(440, 240);
+    setMinimumWidth(440);
+    setMinimumHeight(180);
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+
+    QString textPri = Theme::getTextPrimary();
+    QString textSec = Theme::getTextSecondary();
 
     m_mainLayout = new QVBoxLayout(this);
     m_mainLayout->setContentsMargins(28, 28, 28, 24);
     m_mainLayout->setSpacing(14);
+    m_mainLayout->setSizeConstraint(QLayout::SetMinimumSize);
 
     m_lblTitle = new QLabel(title, this);
-    m_lblTitle->setStyleSheet("font-size: 16px; font-weight: 700; border: none;");
+    m_lblTitle->setStyleSheet(QString("font-size: 16px; font-weight: 700; color: %1; border: none;").arg(textPri));
     m_mainLayout->addWidget(m_lblTitle);
 
     m_lblMessage = new QLabel(message, this);
     m_lblMessage->setWordWrap(true);
-    m_lblMessage->setStyleSheet("font-size: 13px; border: none;");
+    m_lblMessage->setStyleSheet(QString("font-size: 13px; color: %1; border: none;").arg(textPri));
     m_mainLayout->addWidget(m_lblMessage);
 
     m_lblInfo = new QLabel(this);
     m_lblInfo->setWordWrap(true);
-    m_lblInfo->setStyleSheet("font-size: 11px; color: #86868B; border: none;");
+    m_lblInfo->setStyleSheet(QString("font-size: 11px; color: %1; border: none;").arg(textSec));
     m_lblInfo->setVisible(false);
     m_mainLayout->addWidget(m_lblInfo);
 
@@ -38,11 +44,14 @@ GlassDialog::GlassDialog(const QString& title, const QString& message, QWidget* 
     m_buttonLayout->setSpacing(10);
     m_buttonLayout->addStretch();
     m_mainLayout->addLayout(m_buttonLayout);
+
+    adjustSize();
 }
 
 void GlassDialog::setInformativeText(const QString& infoText) {
     m_lblInfo->setText(infoText);
     m_lblInfo->setVisible(!infoText.isEmpty());
+    adjustSize();
 }
 
 void GlassDialog::addActionButton(const QString& text, ButtonVariant variant, bool isAccept) {
@@ -53,6 +62,7 @@ void GlassDialog::addActionButton(const QString& text, ButtonVariant variant, bo
         connect(btn, &QPushButton::clicked, this, &QDialog::reject);
     }
     m_buttonLayout->addWidget(btn);
+    adjustSize();
 }
 
 void GlassDialog::paintEvent(QPaintEvent* event) {

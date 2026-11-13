@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <filesystem>
+#include <fstream>
 
 namespace fs = std::filesystem;
 
@@ -96,12 +97,83 @@ int main() {
               << protectedFolders.size() << " protected folders." << std::endl;
 
     // 5. Test Guardrail 1: Rejection of nested files inside subdirectories
-    std::cout << "[Test 5/5] Running Guardrail 1 planner validation for nested files...";
+    std::cout << "[Test 5/11] Running Guardrail 1 planner validation for nested files...";
     FileRecord nestedFile{"secret.cpp", "cpp", root / "nested" / "secret.cpp", 100, {}, "Code", "", false, -1, true, ""};
     std::vector<FileRecord> nestedList = {nestedFile};
     auto rejectedPlan = planner.generatePlan(root, nestedList);
     assert(rejectedPlan.empty()); // Must be rejected by Guardrail 1
     std::cout << " PASSED! Nested file candidate was successfully rejected." << std::endl;
+
+    // 6. Test Workspace scanning with empty directories
+    std::cout << "[Test 6/11] Running FileScanner on empty directory...";
+    fs::path tempEmpty = fs::temp_directory_path() / "sorted_test_empty_dir";
+    fs::create_directories(tempEmpty);
+    auto emptyDiscovered = scanner.scan(tempEmpty);
+    assert(emptyDiscovered.empty());
+    assert(scanner.getErrors().empty());
+    fs::remove_all(tempEmpty);
+    std::cout << " PASSED!" << std::endl;
+
+    // 7. Test Workspace scanning with many files (200 synthetic files)
+    std::cout << "[Test 7/11] Running FileScanner with 200 files...";
+    fs::path tempMany = fs::temp_directory_path() / "sorted_test_many_files";
+    fs::create_directories(tempMany);
+    for (int i = 0; i < 200; ++i) {
+        std::ofstream(tempMany / ("file_" + std::to_string(i) + ".txt")) << "content";
+    }
+    auto manyDiscovered = scanner.scan(tempMany);
+    assert(manyDiscovered.size() == 200);
+    assert(scanner.getErrors().empty());
+    fs::remove_all(tempMany);
+    std::cout << " PASSED!" << std::endl;
+
+    // 8. Test Inaccessible files and invalid paths
+    std::cout << "[Test 8/11] Running FileScanner on invalid path...";
+    fs::path invalidPath = fs::temp_directory_path() / "sorted_non_existent_123456";
+    auto invalidDiscovered = scanner.scan(invalidPath);
+    assert(invalidDiscovered.empty());
+    assert(!scanner.getErrors().empty());
+    std::cout << " PASSED! Handled invalid path with error logging and no crash." << std::endl;
+
+    // 9. Test Unicode and long filenames
+    std::cout << "[Test 9/11] Running FileScanner with Unicode and long filenames...";
+    fs::path tempUnicode = fs::temp_directory_path() / "sorted_test_unicode";
+    fs::create_directories(tempUnicode);
+#if defined(_WIN32)
+    std::ofstream(tempUnicode / L"日本語テスト_漢字.pdf") << "pdf data";
+    std::ofstream(tempUnicode / L"تقرير_عربي_2026.docx") << "word data";
+    std::ofstream(tempUnicode / L"accented_éàü_test.txt") << "txt data";
+#else
+    std::ofstream(tempUnicode / "日本語テスト_漢字.pdf") << "pdf data";
+    std::ofstream(tempUnicode / "تقرير_عربي_2026.docx") << "word data";
+    std::ofstream(tempUnicode / "accented_éàü_test.txt") << "txt data";
+#endif
+    auto unicodeDiscovered = scanner.scan(tempUnicode);
+    assert(unicodeDiscovered.size() == 3);
+    assert(scanner.getErrors().empty());
+    fs::remove_all(tempUnicode);
+    std::cout << " PASSED!" << std::endl;
+
+    // 10. Test Cancellation during scanning
+    std::cout << "[Test 10/11] Running FileScanner cancellation...";
+    fs::path tempCancel = fs::temp_directory_path() / "sorted_test_cancel";
+    fs::create_directories(tempCancel);
+    for (int i = 0; i < 50; ++i) {
+        std::ofstream(tempCancel / ("file_" + std::to_string(i) + ".txt")) << "data";
+    }
+    std::atomic<bool> cancelRequested{true}; // Cancel requested before/at start
+    auto cancelDiscovered = scanner.scan(tempCancel, &cancelRequested);
+    assert(cancelDiscovered.empty());
+    fs::remove_all(tempCancel);
+    std::cout << " PASSED! Cancel respected immediately." << std::endl;
+
+    // 11. Test Repeated scans
+    std::cout << "[Test 11/11] Running repeated consecutive scans...";
+    for (int iter = 0; iter < 5; ++iter) {
+        auto repeatDiscovered = scanner.scan(root);
+        assert(repeatDiscovered.size() == 7);
+    }
+    std::cout << " PASSED! 5 repeated scans succeeded identically." << std::endl;
 
     std::cout << "============================================" << std::endl;
     std::cout << "  ALL C++17 VERIFICATION TESTS PASSED!      " << std::endl;

@@ -150,6 +150,10 @@ QFrame* OverviewPage::createMetricTile(const QString& title, QLabel*& valueLabel
     auto lblSub = new QLabel(subtitle, card);
     lblSub->setStyleSheet("font-size: 11px; border: none;");
 
+    m_metricTitleLabels.push_back(lblTitle);
+    m_metricValueLabels.push_back(valueLabel);
+    m_metricSubLabels.push_back(lblSub);
+
     layout->addWidget(lblTitle);
     layout->addWidget(valueLabel);
     layout->addWidget(lblSub);
@@ -169,6 +173,17 @@ void OverviewPage::applyTheme() {
     QString textPri = Theme::getTextPrimary();
     QString textSec = Theme::getTextSecondary();
     QString textMuted = Theme::getTextMuted();
+
+    // Metric tiles labels
+    for (auto* lbl : m_metricTitleLabels) {
+        lbl->setStyleSheet(QString("font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: %1; border: none;").arg(textSec));
+    }
+    for (auto* lbl : m_metricValueLabels) {
+        lbl->setStyleSheet(QString("font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: %1; border: none;").arg(textPri));
+    }
+    for (auto* lbl : m_metricSubLabels) {
+        lbl->setStyleSheet(QString("font-size: 11px; color: %1; border: none;").arg(textMuted));
+    }
 
     // Empty state labels
     m_lblEmptyHeading->setStyleSheet(QString("font-size: 20px; font-weight: 600; color: %1; letter-spacing: -0.3px; border: none;").arg(textPri));
