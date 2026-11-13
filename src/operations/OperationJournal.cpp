@@ -1,4 +1,5 @@
 #include "OperationJournal.h"
+#include "../core/PathUtils.h"
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -12,19 +13,22 @@ namespace Operations {
 
 OperationJournal::OperationJournal() {
     QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    if (!appData.isEmpty()) {
-        fs::path appDataPath = fs::u8path(appData.toUtf8().constData());
-        m_journalFilePath = appDataPath / "sorted_journal.json";
+    if (appData.isEmpty()) {
+        appData = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    }
+    fs::path appDataPath = PathUtils::utf8ToPath(appData.toStdString());
+    m_journalFilePath = appDataPath / "sorted_journal.json";
 
-        // Backward-compatibility: Check if .sorted_journal.json exists in working dir
-        // to preserve existing history during upgrade
-        fs::path localLegacy = fs::current_path() / ".sorted_journal.json";
-        std::error_code ec;
+    std::error_code ec;
+    // Backward-compatibility: If legacy journal exists in working directory, migrate/copy it
+    // to the writable appData directory so future operations never encounter access denied
+    fs::path cur = fs::current_path(ec);
+    if (!ec) {
+        fs::path localLegacy = cur / ".sorted_journal.json";
         if (!fs::exists(m_journalFilePath, ec) && fs::exists(localLegacy, ec)) {
-            m_journalFilePath = localLegacy;
+            fs::create_directories(m_journalFilePath.parent_path(), ec);
+            fs::copy_file(localLegacy, m_journalFilePath, fs::copy_options::overwrite_existing, ec);
         }
-    } else {
-        m_journalFilePath = fs::current_path() / ".sorted_journal.json";
     }
 }
 

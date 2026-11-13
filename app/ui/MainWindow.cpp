@@ -173,6 +173,8 @@ void MainWindow::setupUi() {
     setMinimumSize(960, 620);
 
     auto centralWidget = new QWidget(this);
+    centralWidget->setObjectName("centralWidget");
+    centralWidget->setAttribute(Qt::WA_StyledBackground, true);
     setCentralWidget(centralWidget);
 
     auto rootLayout = new QHBoxLayout(centralWidget);
@@ -467,8 +469,14 @@ void MainWindow::applyTheme() {
 
     m_sidebarWidget->setStyleSheet(Theme::getSidebarStyleSheet(theme));
 
+    if (auto central = findChild<QWidget*>("centralWidget")) {
+        central->setStyleSheet(QString("QWidget#centralWidget { background-color: %1; }").arg(Theme::getCanvas()));
+    }
     if (auto contentArea = findChild<QWidget*>("contentArea")) {
         contentArea->setStyleSheet(QString("QWidget#contentArea { background-color: %1; }").arg(Theme::getCanvas()));
+    }
+    if (m_stackWidget) {
+        m_stackWidget->setStyleSheet(QString("QStackedWidget#stackWidget { background-color: %1; }").arg(Theme::getCanvas()));
     }
 
     QString textPri = Theme::getTextPrimary();
