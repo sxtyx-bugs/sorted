@@ -6,6 +6,7 @@ on:
       - main
     tags:
       - 'v*'
+      - 'V*'
   workflow_dispatch:
     inputs:
       publish_release:
@@ -202,7 +203,7 @@ jobs:
   publish-release:
     name: Publish Release Artifacts
     needs: [build-macos-arm64, build-windows]
-    if: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish_release }}
+    if: ${{ !cancelled() && (startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/V') || github.ref == 'refs/heads/main' || inputs.publish_release) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -229,8 +230,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.0.0' }}
-          name: SORTED ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.0.0' }}
+          tag_name: ${{ (startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/V')) && github.ref_name || 'v1.0.2' }}
+          name: SORTED ${{ (startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/V')) && github.ref_name || 'v1.0.2' }}
           draft: false
           prerelease: false
           generate_release_notes: true
